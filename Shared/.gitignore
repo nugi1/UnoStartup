@@ -1,0 +1,25 @@
+# Ignore build results
+bin/
+obj/
+*.log
+*.user
+*.lock.json
+*.cache
+*.pdb
+
+# Ignore user-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Ignore dependencies
+**/node_modules/
+
+# Ignore Docker artifacts
+**/docker-compose.override.yml
+docker-compose.override.yml
+
+# Ignore other OS-specific files
+.DS_Store
+Thumbs.db

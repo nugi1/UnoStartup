@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  unostartup:
+    build:
+      context: .  # Build context for UnoStartup
+      dockerfile: Dockerfile
+    ports:
+      - "5001:80"  # Map container port 80 to host port 5000
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__GameDatabase=Host=postgres;Database=GameDatabase;Username=postgres;Password=Road2Globlob123;TrustServerCertificate=True
+    depends_on:
+      - postgres  # Ensure PostgreSQL starts before UnoStartup
+    networks:
+      - unoapp-network
+
+  postgres:
+    image: postgres:15  # Official PostgreSQL image
+    environment:
+      - POSTGRES_DB=GameDatabase  # Create this DB on startup
+      - POSTGRES_USER=postgres  # Default user
+      - POSTGRES_PASSWORD=Road2Globlob123  # Set password for user
+    volumes:
+      - postgres-data:/var/lib/postgresql/data  # Volume for persistent data
+    networks:
+      - unoapp-network  # Network for inter-container communication
+
+networks:
+  unoapp-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
