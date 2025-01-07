@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices.JavaScript;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.SignalR;
 using Shared.DTOs;
 using UnoAccess.Entities;
@@ -17,12 +18,12 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
     private readonly IDiscardPileService _discardPileService;
     private readonly ICardService _cardService;
     private static readonly ConcurrentDictionary<string, List<Player>> groupConnections = new ConcurrentDictionary<string, List<Player>>();
-    
+
     public UnoHub(
-        IDeckService deckService, 
-        IGameService gameService, 
-        IPlayerService playerService, 
-        ICardDeckService cardDeckService, 
+        IDeckService deckService,
+        IGameService gameService,
+        IPlayerService playerService,
+        ICardDeckService cardDeckService,
         ICardPlayerService cardPlayerService,
         IDiscardPileService discardPileService,
         ICardService cardService)
@@ -35,11 +36,11 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         _discardPileService = discardPileService;
         _cardService = cardService;
     }
-    
+
     // TODO: Organize database entities and integrate with Identity.
     // TODO: Build the Console App, that acts like a client
     // TODO: Error Handling
-    
+
     public async Task<Deck> CreateDeck(CreateDeckDto deckDto)
     {
         var deck = await _deckService.CreateDeck(deckDto);
@@ -63,7 +64,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
 
         return deck;
     }
-    
+
     public async Task JoinDeck(string playerName, Guid deckId)
     {
         var deck = await _deckService.ReadDeck(deckId);
@@ -88,7 +89,8 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
                 }
             );
             await Groups.AddToGroupAsync(Context.ConnectionId, deck.Id.ToString());
-            await Clients.Group(deck.Id.ToString()).SendAsync("PlayerJoined", playerName);
+            await Clients.Group(deck.Id.ToString()).SendAsync("PlayerJoined", groupConnections[deckId.ToString()].Select(p => p.Username).ToList());
+            System.Console.WriteLine(groupConnections[deckId.ToString()]);
         }
 
         if (groupConnections[deck.Id.ToString()].Count == deck.PlayersCount)
@@ -146,14 +148,14 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
 
         await _discardPileService.AddCardOnTop(deckId, cardDto);
         await Clients.Group(deckId.ToString()).SendAsync("MadeTurn", new { Card = cardDto, Name = playerWithTurn.ToString() });
-        
+
         /* Just for testing
         var cardId = cards.First().CardId;
         var card = await _cardService.GetCard(cardId);
         cardDto.Value = card.Value;
         cardDto.Color = card.Color;
         */
-        
+
         await _cardPlayerService.RemovePlayerCard(cardDto, deckId, playerWithTurn.Id);
         await Clients.Caller.SendAsync("RemovedPlayerCard", cardDto);
         switch (cardDto.Value)
@@ -173,14 +175,14 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
                 await _cardPlayerService.GiveCardsToPlayer(deckId, playerWithTurn.Id, 4);
                 break;
         }
-        
+
         var cards = (await _cardPlayerService.GetPlayerCards(playerWithTurn.Id)).ToList();
 
         // TODO: If uno is said by player and cards.Count == 0, then refresh the round and calculate points to be added.
         if (playerWithTurn.UnoSaid && cards.Count == 0)
         {
             var score = await _playerService.CountScore(playerId, deckId);
-            
+
             await _deckService.SetScoreAsync(playerId, deckId, score);
             await _deckService.RefreshDeck(deckId);
 
@@ -197,7 +199,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             }
             return;
         }
-        
+
         var player = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId);
         await Clients.Group(deckId.ToString()).SendAsync("NowTurn", player.Username);
     }
@@ -247,7 +249,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
     public async Task DisconnectFromDeck(string playerName, Guid deckId)
     {
         var deck = await _deckService.ReadDeck(deckId);
-        
+
         if (deck == null)
         {
             await Clients.Caller.SendAsync("Error", "Deck not found or invalid.");
@@ -261,7 +263,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         var player = groupConnections[deck.Id.ToString()].FirstOrDefault(x => x.ConnectionId == Context.ConnectionId);
         groupConnections[deck.Id.ToString()].Remove(player);
     }
-    
+
     private bool IsValidCardPlay(Card topCard, CardDto playedCard)
     {
         if (playedCard.Value == CardValue.Wild || playedCard.Value == CardValue.WildDrawFour)
