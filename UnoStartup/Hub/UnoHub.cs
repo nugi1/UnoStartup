@@ -95,7 +95,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
 
         if (groupConnections[deck.Id.ToString()].Count == deck.PlayersCount)
         {
-            await Clients.Group(deck.Id.ToString()).SendAsync("GameIsStarting", deck.Id.ToString());
+            await Clients.Caller.SendAsync("GameIsStarting", deck.Id.ToString());
         }
     }
 
