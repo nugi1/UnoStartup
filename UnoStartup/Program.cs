@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using UnoAccess.Context;
 using UnoStartup.Hub;
 
@@ -31,6 +32,12 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<UnoContext>();
+    dbContext.Database.Migrate();
 }
 
 app.UseRouting();
