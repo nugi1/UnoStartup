@@ -24,4 +24,11 @@ public class CardService : ICardService
             return await db.Cards.FindAsync(cardId);
         }
     }
+
+    public async Task<IList<Card>> GetCards(IEnumerable<Guid> cardIds)
+    {
+        var cards = (await _unitOfWork.CardRepository.GetAllCardsAsync()).Where(c => cardIds.Contains(c.Id)).ToList();
+
+        return cards;
+    }
 }

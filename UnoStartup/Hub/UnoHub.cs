@@ -107,9 +107,30 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         await _cardDeckService.FillTheDeck(deckId);
         await _cardPlayerService.FillThePlayers(deckId);
         await Clients.Group(deckId.ToString()).SendAsync("FillingCards", deckId);
+
+        foreach (var player in groupConnections[deckId.ToString()])
+        {
+            var playerCards = await _cardPlayerService.GetPlayerCards(player.Id);
+
+            var cards = await _cardService.GetCards(playerCards.Select(pc => pc.CardId));
+
+            await Clients.Client(player.ConnectionId).SendAsync("PlayerCards", new PlayerDto()
+            {
+                Id = player.Id,
+                DeckId = deckId,
+                GameId = game.Id,
+                SayUnoUntil = DateTime.UtcNow,
+                Score = player.Score,
+                UnoSaid = player.UnoSaid,
+                Username = player.Username,
+            }, cards);
+        }
+
         await _deckService.SetTurn(0, deckId);
         var playerWithTurn = await _deckService.GetPlayerWithTurn(deckId);
         await Clients.Group(deckId.ToString()).SendAsync("WaitingForPlayer", playerWithTurn);
+
+        await Clients.Client(playerWithTurn.ConnectionId).SendAsync("MakeTurn");
     }
 
     public async Task GameRefresh(Guid deckId)
