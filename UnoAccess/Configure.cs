@@ -12,8 +12,6 @@ public static class Configure
 {
     public static void ConfigureUnoAccess(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<UnoContext>();
-
         services.AddScoped<ICardRepository, CardRepository>();
         services.AddScoped<IDeckRepository, DeckRepository>();
         services.AddScoped<IGameRepository, GameRepository>();

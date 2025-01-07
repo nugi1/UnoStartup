@@ -12,7 +12,7 @@ public class UnoContext : DbContext
     public DbSet<Card> Cards { get; set; }
     public DbSet<CardDeck> CardDecks { get; set; }
     public DbSet<DiscardPileDeck> DiscardPileDecks { get; set; }
-    
+
     public DbSet<CardPlayer> CardPlayers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ public class UnoContext : DbContext
 
             entity.HasOne<Player>(g => g.Winner).WithMany().HasForeignKey(g => g.WinnerId);
         });
-        
+
         modelBuilder.Entity<Player>(entity =>
         {
             entity.HasKey(p => p.Id);
@@ -66,6 +66,6 @@ public class UnoContext : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.UseNpgsql(
-            @"Host=localhost;Database=GameDatabase;Username=postgres;Password=Road2Globlob123;TrustServerCertificate=True;");
+            @"Host=postgres;Database=GameDatabase;Username=postgres;Password=Road2Globlob123;TrustServerCertificate=True;");
     }
 }
