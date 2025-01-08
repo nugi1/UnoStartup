@@ -112,6 +112,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
 
     public async Task GameStart(Guid deckId)
     {
+        var deck = await _deckService.ReadDeck(deckId);
         var game = await _gameService.CreateGame(deckId);
         await _playerService.AddPlayers(game.Id, groupConnections[deckId.ToString()]);
         await Clients.Group(deckId.ToString()).SendAsync("GameStarted", deckId.ToString());
@@ -161,6 +162,8 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             {
                 await Clients.Group(deckId.ToString()).SendAsync("TopCard", top);
                 await _cardDeckService.RemoveCardOnTop(deckId);
+                deck.TopCard = top;
+                await _deckService.UpdateDeck(deck);
                 break;
             }
         }
