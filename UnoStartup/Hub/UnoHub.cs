@@ -107,6 +107,17 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         await _cardDeckService.FillTheDeck(deckId);
         await _cardPlayerService.FillThePlayers(deckId);
         await Clients.Group(deckId.ToString()).SendAsync("FillingCards", deckId);
+        
+        await Clients.Group(deckId.ToString()).SendAsync("Players", groupConnections[deckId.ToString()].Select(p =>
+            new PlayerDto()
+            {
+                DeckId = p.DeckId,
+                GameId = p.GameId,
+                SayUnoUntil = p.SayUnoUntil,
+                Score = p.Score,
+                UnoSaid = p.UnoSaid,
+                Username = p.Username
+            }));
 
         foreach (var player in groupConnections[deckId.ToString()])
         {
@@ -125,7 +136,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
                 Username = player.Username,
             }, cards);
         }
-
+        
         await _deckService.SetTurn(0, deckId);
         var playerWithTurn = await _deckService.GetPlayerWithTurn(deckId);
         await Clients.Group(deckId.ToString()).SendAsync("WaitingForPlayer", playerWithTurn);
