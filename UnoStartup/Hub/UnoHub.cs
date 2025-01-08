@@ -167,8 +167,8 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         
         await _deckService.SetTurn(0, deckId);
         var playerWithTurn = await _deckService.GetPlayerWithTurn(deckId);
+        
         await Clients.Group(deckId.ToString()).SendAsync("WaitingForPlayer", playerWithTurn);
-
         await Clients.Client(playerWithTurn.ConnectionId).SendAsync("MakeTurn");
     }
 
@@ -205,16 +205,28 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             await Clients.Caller.SendAsync("CantMove", "The played card is invalid!", cardDto);
             return;
         }
+        
+        switch (topCard.Value)
+        {
+            case CardValue.Reverse:
+                await _deckService.TogglePlayDirection(deckId); // Toggle the play direction
+                break;
+            case CardValue.Skip:
+                await Clients.Client(playerWithTurn.ConnectionId).SendAsync("Skipped");// Skip the next player
+                playerWithTurn = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId); // Skip the next player
+                break;
+            case CardValue.DrawTwo:
+                await _cardPlayerService.GiveCardsToPlayer(deckId, playerWithTurn.Id, 2);
+                await Clients.Client(playerWithTurn.ConnectionId).SendAsync("DrawnTwo"); // Give two cards to the next player
+                break;
+            case CardValue.WildDrawFour:
+                await _cardPlayerService.GiveCardsToPlayer(deckId, playerWithTurn.Id, 4);
+                await Clients.Client(playerWithTurn.ConnectionId).SendAsync("DrawnFour"); // Give two cards to the next player
+                break;
+        }
 
         await _discardPileService.AddCardOnTop(deckId, cardDto);
         await Clients.Group(deckId.ToString()).SendAsync("MadeTurn", new { Card = cardDto, Name = playerWithTurn.ToString() });
-
-        /* Just for testing
-        var cardId = cards.First().CardId;
-        var card = await _cardService.GetCard(cardId);
-        cardDto.Value = card.Value;
-        cardDto.Color = card.Color;
-        */
 
         await _cardPlayerService.RemovePlayerCard(cardDto, deckId, playerWithTurn.Id);
         await Clients.Caller.SendAsync("RemovedPlayerCard", cardDto);
