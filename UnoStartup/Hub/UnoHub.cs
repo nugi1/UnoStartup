@@ -44,34 +44,24 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
     public async Task<Deck> CreateDeck(CreateDeckDto deckDto)
     {
         var deck = await _deckService.CreateDeck(deckDto);
+        var player = new Player()
+        {
+            ConnectionId = Context.ConnectionId,
+            Username = deckDto.OwnerPlayer,
+            Score = 0,
+            IsActive = true,
+            Position = 0,
+            DeckId = deck.Id
+        };
 
         groupConnections[deck.Id.ToString()] = new List<Player>()
         {
-            new Player()
-            {
-                ConnectionId = Context.ConnectionId,
-                Username = deckDto.OwnerPlayer,
-                Score = 0,
-                IsActive = true,
-                Position = 0,
-                DeckId = deck.Id
-            }
+            player
         };
         
         await Groups.AddToGroupAsync(Context.ConnectionId, deck.Id.ToString());
 
-        await Clients.Group(deck.Id.ToString()).SendAsync("DeckCreated", deck);
-        
-        await Clients.Group(deck.Id.ToString()).SendAsync("Players", groupConnections[deck.Id.ToString()].Select(p =>
-            new PlayerDto()
-            {
-                DeckId = p.DeckId,
-                GameId = p.GameId,
-                SayUnoUntil = p.SayUnoUntil,
-                Score = p.Score,
-                UnoSaid = p.UnoSaid,
-                Username = p.Username
-            }).ToList());
+        await Clients.Group(deck.Id.ToString()).SendAsync("DeckCreated", deck, player);
 
         return deck;
     }
@@ -211,6 +201,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
 
         await _cardPlayerService.RemovePlayerCard(cardDto, deckId, playerWithTurn.Id);
         await Clients.Caller.SendAsync("RemovedPlayerCard", cardDto);
+        
         switch (cardDto.Value)
         {
             case CardValue.Reverse:
@@ -230,6 +221,8 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         }
 
         var cards = (await _cardPlayerService.GetPlayerCards(playerWithTurn.Id)).ToList();
+        
+        await Clients.Caller.SendAsync("PlayerCardsQuantity", cards.Count);
 
         // TODO: If uno is said by player and cards.Count == 0, then refresh the round and calculate points to be added.
         if (playerWithTurn.UnoSaid && cards.Count == 0)
@@ -252,7 +245,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             }
             return;
         }
-
+        
         var player = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId);
         await Clients.Group(deckId.ToString()).SendAsync("NowTurn", player.Username);
     }
