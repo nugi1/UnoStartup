@@ -147,6 +147,22 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
                 Username = player.Username,
             }, cards);
         }
+
+        while (true)
+        {        
+            var cardDeck = await _cardDeckService.GetTopCard(deckId);
+            Card top = await _cardService.GetCard(cardDeck.CardId);
+
+            if (top.IsWild)
+            {
+                await _cardDeckService.Shuffle(deckId);
+            }
+            else
+            {
+                await Clients.Group(deckId.ToString()).SendAsync("TopCard", top);
+                break;
+            }
+        }
         
         await _deckService.SetTurn(0, deckId);
         var playerWithTurn = await _deckService.GetPlayerWithTurn(deckId);

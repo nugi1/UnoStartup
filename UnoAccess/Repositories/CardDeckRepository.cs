@@ -45,6 +45,19 @@ public class CardDeckRepository : ICardDeckRepository
             await db.CardDecks.AddAsync(cardDeck);
         }
     }
+
+    public async Task UpdateRange(IEnumerable<CardDeck> cardDecks)
+    {
+        using (var db = new UnoContext())
+        {
+            foreach (var cardDeck in cardDecks)
+            {
+                db.CardDecks.Update(cardDeck);
+            }
+
+            await db.SaveChangesAsync();
+        }
+    }
     
     public static void Shuffle<T>(IList<T> list)
     {
