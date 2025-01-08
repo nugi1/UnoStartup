@@ -58,6 +58,10 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             }
         };
         
+        await Groups.AddToGroupAsync(Context.ConnectionId, deck.Id.ToString());
+
+        await Clients.Group(deck.Id.ToString()).SendAsync("DeckCreated", deck);
+        
         await Clients.Group(deck.Id.ToString()).SendAsync("Players", groupConnections[deck.Id.ToString()].Select(p =>
             new PlayerDto()
             {
@@ -67,11 +71,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
                 Score = p.Score,
                 UnoSaid = p.UnoSaid,
                 Username = p.Username
-            }));
-
-        await Groups.AddToGroupAsync(Context.ConnectionId, deck.Id.ToString());
-
-        await Clients.Group(deck.Id.ToString()).SendAsync("DeckCreated", deck);
+            }).ToList());
 
         return deck;
     }
@@ -138,7 +138,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
                 Score = p.Score,
                 UnoSaid = p.UnoSaid,
                 Username = p.Username
-            }));
+            }).ToList());
 
         foreach (var player in groupConnections[deckId.ToString()])
         {
