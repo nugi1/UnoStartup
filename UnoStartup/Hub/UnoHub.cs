@@ -57,6 +57,17 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
                 DeckId = deck.Id
             }
         };
+        
+        await Clients.Group(deck.Id.ToString()).SendAsync("Players", groupConnections[deck.Id.ToString()].Select(p =>
+            new PlayerDto()
+            {
+                DeckId = p.DeckId,
+                GameId = p.GameId,
+                SayUnoUntil = p.SayUnoUntil,
+                Score = p.Score,
+                UnoSaid = p.UnoSaid,
+                Username = p.Username
+            }));
 
         await Groups.AddToGroupAsync(Context.ConnectionId, deck.Id.ToString());
 
@@ -90,8 +101,18 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             );
             await Groups.AddToGroupAsync(Context.ConnectionId, deck.Id.ToString());
             await Clients.Group(deck.Id.ToString()).SendAsync("PlayerJoined", groupConnections[deckId.ToString()].Select(p => p.Username).ToList());
-            System.Console.WriteLine(groupConnections[deckId.ToString()]);
         }
+        
+        await Clients.Group(deck.Id.ToString()).SendAsync("Players", groupConnections[deck.Id.ToString()].Select(p =>
+            new PlayerDto()
+            {
+                DeckId = p.DeckId,
+                GameId = p.GameId,
+                SayUnoUntil = p.SayUnoUntil,
+                Score = p.Score,
+                UnoSaid = p.UnoSaid,
+                Username = p.Username
+            }));
 
         if (groupConnections[deck.Id.ToString()].Count == deck.PlayersCount)
         {
