@@ -181,7 +181,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         await Clients.Group(deckId.ToString()).SendAsync("WaitingForPlayer", playerWithTurn);
     }
 
-    public async Task PlayerMakesTurn(Guid playerId, Guid deckId, CardDto cardDto)
+    public async Task PlayerMakesTurn(Guid playerId, Guid deckId, CardDto? cardDto)
     {
         var playerWithTurn = await _deckService.GetPlayerWithTurn(deckId);
 
@@ -250,8 +250,10 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         }
 
         var cards = (await _cardPlayerService.GetPlayerCards(playerWithTurn.Id)).ToList();
+        var realCards = (await _cardService.GetCards(cards.Select(c => c.CardId))).ToList();
         
         await Clients.Caller.SendAsync("PlayerCardsQuantity", cards.Count);
+        await Clients.Caller.SendAsync("PlayerCards", realCards);
 
         // TODO: If uno is said by player and cards.Count == 0, then refresh the round and calculate points to be added.
         if (playerWithTurn.UnoSaid && cards.Count == 0)
