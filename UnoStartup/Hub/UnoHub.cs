@@ -160,6 +160,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             else
             {
                 await Clients.Group(deckId.ToString()).SendAsync("TopCard", top);
+                await _cardDeckService.RemoveCardOnTop(deckId);
                 break;
             }
         }
