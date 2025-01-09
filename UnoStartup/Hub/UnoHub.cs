@@ -203,53 +203,52 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         }
 
         var topCard = deck.TopCard;
-        if (topCard != null && !IsValidCardPlay(topCard, cardDto))
+        if (cardDto != null && topCard != null && !IsValidCardPlay(topCard, cardDto))
         {
             await Clients.Caller.SendAsync("CantMove", "The played card is invalid!", cardDto);
             return;
         }
         
-        switch (topCard.Value)
+        if (topCard != null)
         {
-            case CardValue.Reverse:
-                await _deckService.TogglePlayDirection(deckId); // Toggle the play direction
-                break;
-            case CardValue.Skip:
-                await Clients.Client(playerWithTurn.ConnectionId).SendAsync("Skipped");// Skip the next player
-                playerWithTurn = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId); // Skip the next player
-                break;
-            case CardValue.DrawTwo:
-                await _cardPlayerService.GiveCardsToPlayer(deckId, playerWithTurn.Id, 2);
-                await Clients.Client(playerWithTurn.ConnectionId).SendAsync("DrawnTwo"); // Give two cards to the next player
-                break;
-            case CardValue.WildDrawFour:
-                await _cardPlayerService.GiveCardsToPlayer(deckId, playerWithTurn.Id, 4);
-                await Clients.Client(playerWithTurn.ConnectionId).SendAsync("DrawnFour"); // Give two cards to the next player
-                break;
+            var anyOfThose = false;
+            switch (topCard.Value)
+            {
+                case CardValue.Reverse:
+                    await _deckService.TogglePlayDirection(deckId);
+                    anyOfThose = true;
+                    break;
+                case CardValue.Skip:
+                    await Clients.Client(playerWithTurn.ConnectionId).SendAsync("Skipped");
+                    playerWithTurn = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId);
+                    anyOfThose = true;
+                    break;
+                case CardValue.DrawTwo:
+                    playerWithTurn = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId);
+                    await _cardPlayerService.GiveCardsToPlayer(deckId, playerWithTurn.Id, 2);
+                    break;
+                case CardValue.WildDrawFour:
+                    playerWithTurn = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId);
+                    await _cardPlayerService.GiveCardsToPlayer(deckId, playerWithTurn.Id, 4);
+                    break;
+            }
+
+            if (anyOfThose)
+            {
+                deck.TopCard = null;
+                deck.TopCardId = null;
+
+                return;
+            }
         }
 
-        await _discardPileService.AddCardOnTop(deckId, cardDto);
-        await Clients.Group(deckId.ToString()).SendAsync("MadeTurn", new { Card = cardDto, Name = playerWithTurn.ToString() });
-
-        await _cardPlayerService.RemovePlayerCard(cardDto, deckId, playerWithTurn.Id);
-        await Clients.Caller.SendAsync("RemovedPlayerCard", cardDto);
-        
-        switch (cardDto.Value)
+        if (cardDto != null)
         {
-            case CardValue.Reverse:
-                await _deckService.TogglePlayDirection(deckId); // Toggle the play direction
-                break;
-            case CardValue.Skip:
-                playerWithTurn = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId);// Skip the next player
-                break;
-            case CardValue.DrawTwo:
-                playerWithTurn = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId);
-                await _cardPlayerService.GiveCardsToPlayer(deckId, playerWithTurn.Id, 2); // Give two cards to the next player
-                break;
-            case CardValue.WildDrawFour:
-                playerWithTurn = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId);
-                await _cardPlayerService.GiveCardsToPlayer(deckId, playerWithTurn.Id, 4);
-                break;
+            await _discardPileService.AddCardOnTop(deckId, cardDto);
+            await Clients.Group(deckId.ToString()).SendAsync("MadeTurn", new { Card = cardDto, Name = playerWithTurn.ToString() });
+
+            await _cardPlayerService.RemovePlayerCard(cardDto, deckId, playerWithTurn.Id);
+            await Clients.Caller.SendAsync("RemovedPlayerCard", cardDto);
         }
 
         var cards = (await _cardPlayerService.GetPlayerCards(playerWithTurn.Id)).ToList();
@@ -276,7 +275,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
                 var game = await _gameService.GameOver(playerWithTurn.GameId, playerId);
                 await _cardPlayerService.Clear(game.Players.Select(p => p.Id));
                 await _cardDeckService.Clear(deckId);
-            }
+            } 
             return;
         }
         
