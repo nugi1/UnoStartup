@@ -5,6 +5,11 @@ using UnoStartup.Hub;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole(); 
+builder.Logging.AddDebug();
+
+
 builder.Services.AddDbContext<UnoContext>();
 
 UnoAccess.Configure.ConfigureUnoAccess(builder.Services, builder.Configuration);

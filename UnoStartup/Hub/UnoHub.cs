@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 using Shared.DTOs;
 using UnoAccess.Entities;
 using UnoServices.Interfaces;
+using UnoServices.Services;
 
 namespace UnoStartup.Hub;
 
@@ -17,6 +18,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
     private readonly ICardPlayerService _cardPlayerService;
     private readonly IDiscardPileService _discardPileService;
     private readonly ICardService _cardService;
+    private readonly ILogger<UnoHub> _logger;
     private static readonly ConcurrentDictionary<string, List<Player>> groupConnections = new ConcurrentDictionary<string, List<Player>>();
 
     public UnoHub(
@@ -26,7 +28,8 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         ICardDeckService cardDeckService,
         ICardPlayerService cardPlayerService,
         IDiscardPileService discardPileService,
-        ICardService cardService)
+        ICardService cardService,
+        ILogger<UnoHub> logger)
     {
         _deckService = deckService;
         _gameService = gameService;
@@ -35,6 +38,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         _cardPlayerService = cardPlayerService;
         _discardPileService = discardPileService;
         _cardService = cardService;
+        _logger = logger;
     }
 
     // TODO: Organize database entities and integrate with Identity.
@@ -60,6 +64,8 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         };
         
         await Groups.AddToGroupAsync(Context.ConnectionId, deck.Id.ToString());
+
+        _logger.LogInformation($"{player.Username}");
 
         await Clients.Group(deck.Id.ToString()).SendAsync("DeckCreated", deck, player);
 

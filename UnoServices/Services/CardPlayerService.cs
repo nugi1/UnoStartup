@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Shared.DTOs;
 using UnoAccess.Entities;
 using UnoAccess.Interfaces;
@@ -12,10 +13,12 @@ namespace UnoServices.Services;
 public class CardPlayerService : ICardPlayerService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<CardPlayerService> _logger;
 
-    public CardPlayerService(IUnitOfWork unitOfWork)
+    public CardPlayerService(IUnitOfWork unitOfWork, ILogger<CardPlayerService> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task FillThePlayers(Guid deckId)
@@ -30,6 +33,7 @@ public class CardPlayerService : ICardPlayerService
     public async Task RemovePlayerCard(CardDto cardDto, Guid deckId, Guid PlayerId)
     {
         var card = await _unitOfWork.CardRepository.GetCardByColorAndValue(cardDto.Color, cardDto.Value);
+        _logger.LogInformation($"{card.Color} {card.Value}");
         var cardPlayer = await _unitOfWork.CardPlayerRepository.GetCardPlayer(PlayerId, card.Id);
         await _unitOfWork.CardPlayerRepository.RemoveAsync(cardPlayer);
     }
