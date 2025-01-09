@@ -261,7 +261,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         var realCards = (await _cardService.GetCards(cards.Select(c => c.CardId))).ToList();
         
         await Clients.Caller.SendAsync("PlayerCardsQuantity", cards.Count);
-        await Clients.Caller.SendAsync("PlayerCards", realCards);
+        await Clients.Caller.SendAsync("PlayerCards", groupConnections[deckId.ToString()].Where(p => p.Id == playerId), realCards);
 
         // TODO: If uno is said by player and cards.Count == 0, then refresh the round and calculate points to be added.
         if (playerWithTurn.UnoSaid && cards.Count == 0)
