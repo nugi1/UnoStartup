@@ -90,7 +90,6 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             );
             await Groups.AddToGroupAsync(Context.ConnectionId, deck.Id.ToString());
             await Clients.Group(deck.Id.ToString()).SendAsync("PlayerJoined", groupConnections[deckId.ToString()].Select(p => p.Username).ToList());
-            System.Console.WriteLine(groupConnections[deckId.ToString()]);
         }
 
         if (groupConnections[deck.Id.ToString()].Count == deck.PlayersCount)
@@ -265,6 +264,22 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             await Clients.Caller.SendAsync("CantSayUno", playerId);
             return;
         }
+    }
+
+    public async Task GetState(Guid playerId, Guid gameId, Guid deckId)
+    {
+        var game = await _gameService.GetGameBy(gameId);
+        await Clients.Caller.SendAsync("CurrentGameState", game);
+
+        var deck = await _deckService.GetPlayerWithTurn(deckId);
+        await Clients.Caller.SendAsync("CurrentTurnState", deck);
+
+        var player = await _playerService.GetPlayerById(playerId);
+        var cardPlayers = await _cardPlayerService.GetPlayerCards(playerId);
+        var cards = await _cardService.GetCards(cardPlayers.Select(cp => cp.CardId).ToList());
+        await Clients.Caller.SendAsync("CurrentCardState", cards);
+
+        groupConnections[deckId.ToString()].Where(gc => gc.Id == playerId).First().ConnectionId = Context.ConnectionId;
     }
 
     public async Task DisconnectFromDeck(string playerName, Guid deckId)

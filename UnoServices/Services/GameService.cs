@@ -36,4 +36,11 @@ public class GameService : IGameService
 
         return game;
     }
+
+    public async Task<Game?> GetGameBy(Guid gameId)
+    {
+        var game = await _unitOfWork.GameRepository.GetGameByIdAsync(gameId);
+
+        return game;
+    }
 }
