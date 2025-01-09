@@ -42,7 +42,22 @@ public class CardDeckRepository : ICardDeckRepository
     {
         using (var db = new UnoContext())
         {
-            await db.CardDecks.AddAsync(cardDeck);
+            db.CardDecks.Remove(cardDeck);
+
+            await db.SaveChangesAsync();
+        }
+    }
+
+    public async Task UpdateRange(IEnumerable<CardDeck> cardDecks)
+    {
+        using (var db = new UnoContext())
+        {
+            foreach (var cardDeck in cardDecks)
+            {
+                db.CardDecks.Update(cardDeck);
+            }
+
+            await db.SaveChangesAsync();
         }
     }
     

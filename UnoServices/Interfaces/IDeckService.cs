@@ -12,4 +12,6 @@ public interface IDeckService
     Task TogglePlayDirection(Guid deckId);
     Task<Player> SetScoreAsync(Guid playerId, Guid deckId, int score);
     Task RefreshDeck(Guid deckId);
+
+    Task UpdateDeck(Deck deck);
 }

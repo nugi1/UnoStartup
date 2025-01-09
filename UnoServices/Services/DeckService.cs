@@ -78,6 +78,11 @@ public class DeckService : IDeckService
         return player;
     }
 
+    public async Task UpdateDeck(Deck deck)
+    {
+        await _unitOfWork.DeckRepository.UpdateDeckAsync(deck);
+    }
+
     public async Task RefreshDeck(Guid deckId)
     {
         var cardDecks = await _unitOfWork.CardDeckRepository.GetCardsByDeck(deckId);

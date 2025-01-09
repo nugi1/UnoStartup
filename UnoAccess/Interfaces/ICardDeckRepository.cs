@@ -9,4 +9,6 @@ public interface ICardDeckRepository
     Task<IEnumerable<CardDeck>> GetCardsByDeck(Guid deckId);
 
     Task RemoveCardAsync(CardDeck cardDeck);
+
+    Task UpdateRange(IEnumerable<CardDeck> cardDecks);
 }

@@ -44,23 +44,24 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
     public async Task<Deck> CreateDeck(CreateDeckDto deckDto)
     {
         var deck = await _deckService.CreateDeck(deckDto);
+        var player = new Player()
+        {
+            ConnectionId = Context.ConnectionId,
+            Username = deckDto.OwnerPlayer,
+            Score = 0,
+            IsActive = true,
+            Position = 0,
+            DeckId = deck.Id
+        };
 
         groupConnections[deck.Id.ToString()] = new List<Player>()
         {
-            new Player()
-            {
-                ConnectionId = Context.ConnectionId,
-                Username = deckDto.OwnerPlayer,
-                Score = 0,
-                IsActive = true,
-                Position = 0,
-                DeckId = deck.Id
-            }
+            player
         };
-
+        
         await Groups.AddToGroupAsync(Context.ConnectionId, deck.Id.ToString());
 
-        await Clients.Group(deck.Id.ToString()).SendAsync("DeckCreated", deck);
+        await Clients.Group(deck.Id.ToString()).SendAsync("DeckCreated", deck, player);
 
         return deck;
     }
@@ -91,6 +92,17 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             await Groups.AddToGroupAsync(Context.ConnectionId, deck.Id.ToString());
             await Clients.Group(deck.Id.ToString()).SendAsync("PlayerJoined", groupConnections[deckId.ToString()].Select(p => p.Username).ToList());
         }
+        
+        await Clients.Group(deck.Id.ToString()).SendAsync("Players", groupConnections[deck.Id.ToString()].Select(p =>
+            new PlayerDto()
+            {
+                DeckId = p.DeckId,
+                GameId = p.GameId,
+                SayUnoUntil = p.SayUnoUntil,
+                Score = p.Score,
+                UnoSaid = p.UnoSaid,
+                Username = p.Username
+            }));
 
         if (groupConnections[deck.Id.ToString()].Count == deck.PlayersCount)
         {
@@ -100,12 +112,24 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
 
     public async Task GameStart(Guid deckId)
     {
+        var deck = await _deckService.ReadDeck(deckId);
         var game = await _gameService.CreateGame(deckId);
         await _playerService.AddPlayers(game.Id, groupConnections[deckId.ToString()]);
         await Clients.Group(deckId.ToString()).SendAsync("GameStarted", deckId.ToString());
         await _cardDeckService.FillTheDeck(deckId);
         await _cardPlayerService.FillThePlayers(deckId);
         await Clients.Group(deckId.ToString()).SendAsync("FillingCards", deckId);
+        
+        await Clients.Group(deckId.ToString()).SendAsync("Players", groupConnections[deckId.ToString()].Select(p =>
+            new PlayerDto()
+            {
+                DeckId = p.DeckId,
+                GameId = p.GameId,
+                SayUnoUntil = p.SayUnoUntil,
+                Score = p.Score,
+                UnoSaid = p.UnoSaid,
+                Username = p.Username
+            }).ToList());
 
         foreach (var player in groupConnections[deckId.ToString()])
         {
@@ -125,10 +149,29 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             }, cards);
         }
 
+        while (true)
+        {        
+            var cardDeck = await _cardDeckService.GetTopCard(deckId);
+            Card top = await _cardService.GetCard(cardDeck.CardId);
+
+            if (top.IsWild)
+            {
+                await _cardDeckService.Shuffle(deckId);
+            }
+            else
+            {
+                await Clients.Group(deckId.ToString()).SendAsync("TopCard", top);
+                await _cardDeckService.RemoveCardOnTop(deckId);
+                deck.TopCard = top;
+                await _deckService.UpdateDeck(deck);
+                break;
+            }
+        }
+        
         await _deckService.SetTurn(0, deckId);
         var playerWithTurn = await _deckService.GetPlayerWithTurn(deckId);
+        
         await Clients.Group(deckId.ToString()).SendAsync("WaitingForPlayer", playerWithTurn);
-
         await Clients.Client(playerWithTurn.ConnectionId).SendAsync("MakeTurn");
     }
 
@@ -141,7 +184,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         await Clients.Group(deckId.ToString()).SendAsync("WaitingForPlayer", playerWithTurn);
     }
 
-    public async Task PlayerMakesTurn(Guid playerId, Guid deckId, CardDto cardDto)
+    public async Task PlayerMakesTurn(Guid playerId, Guid deckId, CardDto? cardDto)
     {
         var playerWithTurn = await _deckService.GetPlayerWithTurn(deckId);
 
@@ -165,19 +208,32 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             await Clients.Caller.SendAsync("CantMove", "The played card is invalid!", cardDto);
             return;
         }
+        
+        switch (topCard.Value)
+        {
+            case CardValue.Reverse:
+                await _deckService.TogglePlayDirection(deckId); // Toggle the play direction
+                break;
+            case CardValue.Skip:
+                await Clients.Client(playerWithTurn.ConnectionId).SendAsync("Skipped");// Skip the next player
+                playerWithTurn = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId); // Skip the next player
+                break;
+            case CardValue.DrawTwo:
+                await _cardPlayerService.GiveCardsToPlayer(deckId, playerWithTurn.Id, 2);
+                await Clients.Client(playerWithTurn.ConnectionId).SendAsync("DrawnTwo"); // Give two cards to the next player
+                break;
+            case CardValue.WildDrawFour:
+                await _cardPlayerService.GiveCardsToPlayer(deckId, playerWithTurn.Id, 4);
+                await Clients.Client(playerWithTurn.ConnectionId).SendAsync("DrawnFour"); // Give two cards to the next player
+                break;
+        }
 
         await _discardPileService.AddCardOnTop(deckId, cardDto);
         await Clients.Group(deckId.ToString()).SendAsync("MadeTurn", new { Card = cardDto, Name = playerWithTurn.ToString() });
 
-        /* Just for testing
-        var cardId = cards.First().CardId;
-        var card = await _cardService.GetCard(cardId);
-        cardDto.Value = card.Value;
-        cardDto.Color = card.Color;
-        */
-
         await _cardPlayerService.RemovePlayerCard(cardDto, deckId, playerWithTurn.Id);
         await Clients.Caller.SendAsync("RemovedPlayerCard", cardDto);
+        
         switch (cardDto.Value)
         {
             case CardValue.Reverse:
@@ -197,6 +253,10 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         }
 
         var cards = (await _cardPlayerService.GetPlayerCards(playerWithTurn.Id)).ToList();
+        var realCards = (await _cardService.GetCards(cards.Select(c => c.CardId))).ToList();
+        
+        await Clients.Caller.SendAsync("PlayerCardsQuantity", cards.Count);
+        await Clients.Caller.SendAsync("PlayerCards", realCards);
 
         // TODO: If uno is said by player and cards.Count == 0, then refresh the round and calculate points to be added.
         if (playerWithTurn.UnoSaid && cards.Count == 0)
@@ -219,7 +279,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
             }
             return;
         }
-
+        
         var player = await _deckService.SetTurn(playerWithTurn.Position + 1, deckId);
         await Clients.Group(deckId.ToString()).SendAsync("NowTurn", player.Username);
     }

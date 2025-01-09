@@ -1,3 +1,4 @@
+using System.Collections;
 using UnoAccess.Entities;
 using UnoAccess.Interfaces;
 using UnoServices.Interfaces;
@@ -30,6 +31,29 @@ public class CardDeckService : ICardDeckService
         await _cardDeckRepository.RemoveCardAsync(card);
     }
 
+    public async Task<CardDeck> GetTopCard(Guid deckId)
+    {
+        var cards = await _cardDeckRepository.GetCardsByDeck(deckId);
+        var cardDeck = cards.OrderBy(c => c.Position).First();
+
+        return cardDeck;
+    }
+
+    public async Task Shuffle(Guid deckId)
+    {
+        var cards = (await _cardDeckRepository.GetCardsByDeck(deckId)).ToList();
+        Shuffle<CardDeck>(cards);
+        
+        var shuffledCardDecks = cards.Select((c, index) => new CardDeck()
+        {
+            CardId = c.CardId,
+            DeckId = deckId,
+            Position = index
+        });
+
+        await _cardDeckRepository.UpdateRange(shuffledCardDecks);
+    }
+
     public async Task Clear(Guid deckId)
     {
         var cards = await _cardDeckRepository.GetCardsByDeck(deckId);
@@ -41,6 +65,18 @@ public class CardDeckService : ICardDeckService
                 CardId = card.CardId,
                 DeckId = deckId,
             });
+        }
+    }
+    
+    private static void Shuffle<T>(IList<T> list)
+    {
+        Random rng = new Random();
+        int n = list.Count;
+        while (n > 1)
+        {
+            n--;
+            int k = rng.Next(n + 1);
+            (list[k], list[n]) = (list[n], list[k]);
         }
     }
 }
