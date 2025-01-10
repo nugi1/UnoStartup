@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Shared.DTOs.Actions;
+using Shared.DTOs.ChangeStateData;
 using Shared.Enums;
 using Shared.States;
 using System;
@@ -563,7 +564,15 @@ public class GameStateService : IGameStateService
         {
             changes.Add(new GameStateChange
             {
-                Type = "WaitingForPlayers",
+                Type = "GameCreated",
+                Data = new GameCreatedDto
+                {
+                    GameId = newState.Game.Id,
+                    Players = newState.Game.Players.Select(p => new PlayerState
+                    {
+                        Username = p.Username,
+                    }).ToList()
+                }
             });
         }
 
@@ -571,7 +580,20 @@ public class GameStateService : IGameStateService
         {
             changes.Add(new GameStateChange
             {
-                Type = "GamePlayersChanged"
+                Type = "GamePlayersChanged",
+                Data = newState.Game.Players.Select(p => new PlayerState
+                {
+                    ConnectionId = p.ConnectionId,
+                    Score = p.Score,
+                    Username = p.Username,
+                    UnoSaid = p.UnoSaid,
+                    Cards = p.Cards.Select(c => new Shared.DTOs.CardDto
+                    {
+                        Color = c.Color,
+                        Value = c.Value,
+                    }).ToList(),
+                    GameId = newState.Game.Id,
+                })
             });
         }
 
@@ -579,7 +601,16 @@ public class GameStateService : IGameStateService
         {
             changes.Add(new GameStateChange
             {
-                Type = "TopCardChanged"
+                Type = "TopCardChanged",
+                Data = new GameTopCardDto
+                {
+                    GameId = newState.Game.Id,
+                    Card = new Shared.DTOs.CardDto
+                    {
+                        Color = newState.Game.Round.TopCard.Color,
+                        Value = newState.Game.Round.TopCard.Value,
+                    }
+                }
             });
         }
 
@@ -591,7 +622,17 @@ public class GameStateService : IGameStateService
             {
                 changes.Add(new GameStateChange
                 {
-                    Type = "PlayerCardsChanged"
+                    Type = "PlayerCardsChanged",
+                    Data = new GamePlayerCards
+                    {
+                        GameId = newState.Game.Id,
+                        Cards = newPlayerState.Cards.Select(c => new Shared.DTOs.CardDto
+                        {
+                            Color = c.Color,
+                            Value = c.Value,
+                        }).ToList(),
+                        ConnectionId = newPlayerState.ConnectionId
+                    }
                 });
             }
 
@@ -599,7 +640,12 @@ public class GameStateService : IGameStateService
             {
                 changes.Add(new GameStateChange()
                 {
-                    Type = "PlayerScoreChanged"
+                    Type = "PlayerScoreChanged",
+                    Data = new GameScoreDto
+                    {
+                        ConnectionId = newPlayerState.ConnectionId,
+                        Score = newPlayerState.Score,
+                    }
                 });
             }
 
@@ -607,7 +653,12 @@ public class GameStateService : IGameStateService
             {
                 changes.Add(new GameStateChange()
                 {
-                    Type = "ChangedTurn"
+                    Type = "ChangedTurn",
+                    Data = new GameTurnDto
+                    {
+                        ConnectionId = newPlayerState.ConnectionId,
+                        Username = newPlayerState.Username,
+                    }
                 });
             }
         }
@@ -616,7 +667,12 @@ public class GameStateService : IGameStateService
         {
             changes.Add(new GameStateChange
             {
-                Type = "NewRound"
+                Type = "NewRound",
+                Data = new GameRoundDto
+                {
+                    GameId = newState.Game.Id,
+                    Round = newState.Game.Round.Played + 1
+                }
             });
         }
 
@@ -624,7 +680,13 @@ public class GameStateService : IGameStateService
         {
             changes.Add(new GameStateChange
             {
-                Type = "WonGame"
+                Type = "WonGame",
+                Data = new GameWinnerDto
+                {
+                    GameId = newState.Game.Id,
+                    ConnectionId = newState.Game.Players.First(p => p.Username == newState.Game.WinnerName).ConnectionId,
+                    WinnerName = newState.Game.WinnerName,
+                }
             });
         }
 
