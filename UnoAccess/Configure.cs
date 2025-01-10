@@ -1,25 +1,31 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using UnoAccess.Context;
-using UnoAccess.Entities;
 using UnoAccess.Interfaces;
 using UnoAccess.Repositories;
+using UnoAccess;
+using UnoAccess.Context;
 
-namespace UnoAccess;
+namespace GameStore.Data.Configuration;
 
-public static class Configure
+[ExcludeFromCodeCoverage]
+public static class DataAccessConfiguration
 {
-    public static void ConfigureUnoAccess(this IServiceCollection services, IConfiguration configuration)
+    public static void AddGameStoreDataAccess(this IServiceCollection serviceCollection, IConfiguration configuration)
     {
-        services.AddScoped<ICardRepository, CardRepository>();
-        services.AddScoped<IDeckRepository, DeckRepository>();
-        services.AddScoped<IGameRepository, GameRepository>();
-        services.AddScoped<IPlayerRepository, PlayerRepository>();
-        services.AddScoped<ICardDeckRepository, CardDeckRepository>();
-        services.AddScoped<ICardPlayerRepository, CardPlayerRepository>();
-        services.AddScoped<IDiscardPileDeckRepository, DiscardPileDeckRepository>();
-        
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        serviceCollection.AddDbContext<UnoContext>((sp, options) =>
+        {
+            options.UseNpgsql(configuration.GetConnectionString("GameDatabase"));
+        });
+
+        serviceCollection.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+        serviceCollection.AddScoped<IGameRepository, GameRepository>();
+        serviceCollection.AddScoped<IRoundRepository, RoundRepository>();
+        serviceCollection.AddScoped<IRoundCardRepository, RoundCardRepository>();
+        serviceCollection.AddScoped<ICardRepository, CardRepository>();
+        serviceCollection.AddScoped<IPlayerRepository, PlayerRepository>();
+
+        serviceCollection.AddScoped<IUnitOfWork, UnitOfWork>();
     }
 }

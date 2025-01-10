@@ -5,7 +5,7 @@ namespace UnoAccess.PredefinedData;
 
 public static class CardsData
 {
-    public static ICollection<Card> GetData => new List<Card>()
+    public static ICollection<Card> Get => new List<Card>()
     {
         new Card
         {

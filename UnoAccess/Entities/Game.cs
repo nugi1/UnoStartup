@@ -1,6 +1,3 @@
-using System.Collections.ObjectModel;
-using Microsoft.Extensions.Logging;
-
 namespace UnoAccess.Entities;
 
 public class Game : Base
@@ -13,5 +10,9 @@ public class Game : Base
 
     public string? Password { get; set; }
 
-    public ICollection<Player> Players { get; set; } = new Collection<Player>();
+    public Guid? RoundId { get; set; }
+
+    public Round? Round { get; set; }
+
+    public ICollection<Player> Players { get; set; } = new List<Player>();
 }

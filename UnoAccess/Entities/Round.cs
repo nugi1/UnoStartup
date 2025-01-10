@@ -2,7 +2,7 @@
 
 public class Round : Base
 {
-    public int Played { get; set;; }
+    public int Played { get; set; }
 
     public Guid? TopCardId { get; set; }
 
@@ -12,5 +12,5 @@ public class Round : Base
 
     public Game Game { get; set; } = null!;
 
-    public ICollection<Card> CardsInPlay { get; set; } = new List<Card>();
+    public ICollection<RoundCard> CardsInPlay { get; set; } = new List<RoundCard>();
 }

@@ -11,4 +11,8 @@ public class RoundCard
     public Guid CardId { get; set; }
 
     public Card Card { get; set; } = null!;
+
+    public Guid? PlayerId { get; set; }
+
+    public Player? Player { get; set; }
 }

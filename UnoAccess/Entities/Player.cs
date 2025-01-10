@@ -1,6 +1,4 @@
-using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 
 namespace UnoAccess.Entities;
 
@@ -21,7 +19,7 @@ public class Player : Base
 
     public Guid? RoundId { get; set; }
 
-    public Guid? Round { get; set; }
+    public Round? Round { get; set; }
         
     [MaxLength(50)]
     public string ConnectionId { get; set; } = null!;
