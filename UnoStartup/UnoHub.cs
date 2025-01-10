@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using Shared.States;
 using UnoAccess.Entities;
 using UnoServices.Delegates;
 using UnoServices.Interfaces;
@@ -16,9 +17,49 @@ namespace UnoStartup
 
         public async Task<GameState> UpdateGameState(PlayerAction action)
         {
-            var state = await _gameStateService.UpdateGameState(action);
+            GameState? oldState = null;
+            if (action.GameId != null)
+            {
+                oldState = await _gameStateService.GetGameState(action.GameId ?? throw new NotImplementedException());
+            }
 
-            return state;
+            action.ConnectionId = Context.ConnectionId;
+            var newState = await _gameStateService.UpdateGameState(action);
+
+            var changes = _gameStateService.GetGameStateChanges(oldState, newState);
+
+            await BroadCastChanges(changes, newState.GameId ?? throw new NotImplementedException());
+
+            return newState;
         }
+
+        public async Task BroadCastChanges(IEnumerable<GameStateChange> changes, Guid gameId)
+        {
+            foreach (var change in changes)
+            {
+                switch (change.Type)
+                {
+                    case "WaitingForPlayers":
+                        break;
+                    case "GamePlayersChanged":
+                        break;
+                    case "RoundStarted":
+                        break;
+                    case "TopCardChanged":
+                        break;
+                    case "PlayerCardsChanged":
+                        break;
+                    case "PlayerScoreChanged":
+                        break;
+                    case "ChangedTurn":
+                        break;
+                    case "NewRound":
+                        break;
+                    case "WonGame":
+                        break;
+                    default:
+                        break;
+                }
+            }
     }
 }

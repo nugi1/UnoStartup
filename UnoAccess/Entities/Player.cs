@@ -28,5 +28,7 @@ public class Player : Base
     
     public DateTime SayUnoUntil { get; set; }
 
+    public int DrawStack { get; set; }
+
     public IList<Card> Cards { get; set; } = new List<Card>();
 }

@@ -9,6 +9,4 @@ public class GameState
     public bool GameStarted { get; set; }
 
     public Guid? RoundId { get; set; }
-
-    public Round? Round { get; set; }
 }

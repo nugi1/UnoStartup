@@ -1,4 +1,6 @@
-﻿namespace UnoAccess.Entities;
+﻿using System.Text.Json.Serialization;
+
+namespace UnoAccess.Entities;
 
 public class RoundCard
 {
@@ -6,6 +8,7 @@ public class RoundCard
 
     public Guid RoundId { get; set; }
 
+    [JsonIgnore]
     public Round Round { get; set; } = null!;
 
     public Guid CardId { get; set; }
