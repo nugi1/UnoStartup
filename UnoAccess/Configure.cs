@@ -4,15 +4,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UnoAccess.Interfaces;
 using UnoAccess.Repositories;
-using UnoAccess;
 using UnoAccess.Context;
 
-namespace GameStore.Data.Configuration;
+namespace UnoAccess.Configuration;
 
 [ExcludeFromCodeCoverage]
 public static class DataAccessConfiguration
 {
-    public static void AddGameStoreDataAccess(this IServiceCollection serviceCollection, IConfiguration configuration)
+    public static void AddAccessConfig(this IServiceCollection serviceCollection, IConfiguration configuration)
     {
         serviceCollection.AddDbContext<UnoContext>((sp, options) =>
         {

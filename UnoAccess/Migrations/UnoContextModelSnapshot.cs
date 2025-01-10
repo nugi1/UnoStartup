@@ -31,10 +31,15 @@ namespace UnoAccess.Migrations
                     b.Property<int>("Color")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("PlayerId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Value")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PlayerId");
 
                     b.ToTable("Cards");
 
@@ -701,6 +706,9 @@ namespace UnoAccess.Migrations
                     b.Property<string>("Password")
                         .HasColumnType("text");
 
+                    b.Property<int>("PlayerQuantity")
+                        .HasColumnType("integer");
+
                     b.Property<Guid?>("RoundId")
                         .HasColumnType("uuid");
 
@@ -810,6 +818,13 @@ namespace UnoAccess.Migrations
                     b.ToTable("RoundCards");
                 });
 
+            modelBuilder.Entity("UnoAccess.Entities.Card", b =>
+                {
+                    b.HasOne("UnoAccess.Entities.Player", null)
+                        .WithMany("Cards")
+                        .HasForeignKey("PlayerId");
+                });
+
             modelBuilder.Entity("UnoAccess.Entities.Player", b =>
                 {
                     b.HasOne("UnoAccess.Entities.Game", null)
@@ -864,6 +879,11 @@ namespace UnoAccess.Migrations
                     b.Navigation("Players");
 
                     b.Navigation("Round");
+                });
+
+            modelBuilder.Entity("UnoAccess.Entities.Player", b =>
+                {
+                    b.Navigation("Cards");
                 });
 
             modelBuilder.Entity("UnoAccess.Entities.Round", b =>

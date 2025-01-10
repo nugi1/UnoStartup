@@ -27,4 +27,6 @@ public class Player : Base
     public bool UnoSaid { get; set; }
     
     public DateTime SayUnoUntil { get; set; }
+
+    public IList<Card> Cards { get; set; } = new List<Card>();
 }

@@ -12,5 +12,5 @@ public class Round : Base
 
     public Game Game { get; set; } = null!;
 
-    public ICollection<RoundCard> CardsInPlay { get; set; } = new List<RoundCard>();
+    public IList<RoundCard> CardsInPlay { get; set; } = new List<RoundCard>();
 }
