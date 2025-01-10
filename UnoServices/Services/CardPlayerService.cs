@@ -33,6 +33,11 @@ public class CardPlayerService : ICardPlayerService
     public async Task RemovePlayerCard(CardDto cardDto, Guid deckId, Guid PlayerId)
     {
         var card = await _unitOfWork.CardRepository.GetCardByColorAndValue(cardDto.Color, cardDto.Value);
+        if (card == null)
+        {
+            _logger.LogInformation("Es yleobaa!");
+        }
+
         _logger.LogInformation($"{card.Color} {card.Value}");
         var cardPlayer = await _unitOfWork.CardPlayerRepository.GetCardPlayer(PlayerId, card.Id);
         await _unitOfWork.CardPlayerRepository.RemoveAsync(cardPlayer);

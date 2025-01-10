@@ -10,20 +10,21 @@ public class Player : Base
     public string Username { get; set; } = null!;
 
     public int Score { get; set; }
-    
-    public bool IsActive { get; set; }
-    
+
+    public bool IsWinner { get; set; }
+
+    public bool IsTurn { get; set; }
+
+    public int Position { get; set; }
+
+    public bool IsOwner { get; set; }
+
+    public Guid? RoundId { get; set; }
+
+    public Guid? Round { get; set; }
+        
     [MaxLength(50)]
     public string ConnectionId { get; set; } = null!;
-    
-    public Guid GameId { get; set; }
-    public Game Game { get; set; }
-    
-    [JsonIgnore]
-    public Guid DeckId { get; set; }
-    [JsonIgnore]
-    public Deck Deck { get; set; }
-    public int Position { get; set; }
     
     public bool UnoSaid { get; set; }
     

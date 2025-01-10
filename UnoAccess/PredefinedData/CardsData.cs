@@ -1,4 +1,4 @@
-using Shared.DTOs;
+using Shared.Enums;
 using UnoAccess.Entities;
 
 namespace UnoAccess.PredefinedData;

@@ -66,6 +66,6 @@ public class UnoContext : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.UseNpgsql(
-            @"Host=postgres;Database=GameDatabase;Username=postgres;Password=Road2Globlob123;TrustServerCertificate=True;");
+            @"Host=localhost;Database=GameDatabase;Username=postgres;Password=Road2Globlob123;TrustServerCertificate=True;");
     }
 }

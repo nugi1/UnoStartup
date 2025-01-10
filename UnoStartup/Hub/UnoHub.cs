@@ -96,7 +96,7 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
                 }
             );
             await Groups.AddToGroupAsync(Context.ConnectionId, deck.Id.ToString());
-            await Clients.Group(deck.Id.ToString()).SendAsync("PlayerJoined", groupConnections[deckId.ToString()].Select(p => p.Username).ToList());
+            await Clients.Group(deck.Id.ToString()).SendAsync("PlayerJoined", groupConnections[deckId.ToString()].Select(p => p.Username).ToList(), deck);
         }
         
         await Clients.Group(deck.Id.ToString()).SendAsync("Players", groupConnections[deck.Id.ToString()].Select(p =>
@@ -190,9 +190,16 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
         await Clients.Group(deckId.ToString()).SendAsync("WaitingForPlayer", playerWithTurn);
     }
 
-    public async Task PlayerMakesTurn(Guid playerId, Guid deckId, CardDto? cardDto)
+    public async Task PlayerMakesTurn(Guid playerId, Guid deckId, Card card)
     {
+        var cardDto = new CardDto
+        {
+            Color = card.Color,
+            Value = card.Value
+        };
         var playerWithTurn = await _deckService.GetPlayerWithTurn(deckId);
+
+        Console.WriteLine($"{playerWithTurn.Username} makes turn!");
 
         if (playerWithTurn.Id != playerId)
         {
@@ -247,6 +254,8 @@ public class UnoHub : Microsoft.AspNetCore.SignalR.Hub
                 return;
             }
         }
+
+        Console.WriteLine("Aqana");
 
         if (cardDto != null)
         {
