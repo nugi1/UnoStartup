@@ -571,6 +571,7 @@ public class GameStateService : IGameStateService
                     Players = newState.Game.Players.Select(p => new PlayerState
                     {
                         Username = p.Username,
+                        GameId = p.Round.Game.Id
                     }).ToList()
                 }
             });

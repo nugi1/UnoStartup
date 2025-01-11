@@ -16,7 +16,7 @@ namespace UnoStartup
             _gameStateService = gameStateService;
         }
 
-        public async Task UpdateGameState(PlayerAction action)
+        public async Task<GameStateDto> UpdateGameState(PlayerAction action)
         {
             GameState? oldState = null;
             if (action.GameId != null)
@@ -30,6 +30,22 @@ namespace UnoStartup
             var changes = _gameStateService.GetGameStateChanges(oldState, newState);
 
             await BroadCastChanges(changes, newState.GameId ?? throw new NotImplementedException());
+
+            return new GameStateDto()
+            {
+                GameId = newState.Game.Id,
+                CardsInPlay = 0,
+                PlayersCount = newState.Game.Players.Count(),
+                Players = newState.Game.Players.Select(p => new PlayerState()
+                {
+                    Score = p.Score,
+                    UnoSaid = p.UnoSaid,
+                    ConnectionId = Context.ConnectionId,
+                    GameId = newState.Game.Id,
+                    Username = p.Username
+                }).ToList(),
+                Round = 1
+            };
         }
 
         public async Task BroadCastChanges(IEnumerable<GameStateChange> changes, Guid gameId)
