@@ -629,6 +629,14 @@ public class GameStateService : IGameStateService
                     Data = new GamePlayerCards
                     {
                         GameId = newState.Game.Id,
+                        PlayerState = new PlayerState
+                        {
+                            ConnectionId = newPlayerState.ConnectionId,
+                            GameId = newState.Game.Id,
+                            UnoSaid = newPlayerState.UnoSaid,
+                            Score = newPlayerState.Score,
+                            Username = newPlayerState.Username,
+                        },
                         Cards = newPlayerState.Cards.Select(c => new Shared.DTOs.CardDto
                         {
                             Color = c.Color,
