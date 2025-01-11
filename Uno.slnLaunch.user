@@ -5,10 +5,6 @@
       {
         "Path": "UnoStartup\\UnoStartup.csproj",
         "Action": "Start"
-      },
-      {
-        "Path": "UnoClient\\UnoClient.csproj",
-        "Action": "Start"
       }
     ]
   }

@@ -18,6 +18,16 @@ public class Program
 
         builder.Services.AddSignalR();
 
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowSpecificOrigins", policy =>
+            {
+                policy.WithOrigins("http://localhost:3000")
+                      .AllowAnyMethod()
+                      .AllowAnyHeader();
+            });
+        });
+
         var app = builder.Build();
 
         if (app.Environment.IsDevelopment())
@@ -38,6 +48,8 @@ public class Program
         app.MapHub<UnoHub>("/uno/hub");
 
         app.MapControllers();
+
+        app.UseCors("AllowSpecificOrigins");
 
         app.Run();
     }
