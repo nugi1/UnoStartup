@@ -661,6 +661,7 @@ public class GameStateService : IGameStateService
                     {
                         ConnectionId = newPlayerState.ConnectionId,
                         Username = newPlayerState.Username,
+                        GameId = newState.Game.Id
                     }
                 });
             }
