@@ -574,6 +574,8 @@ public class GameStateService : IGameStateService
                     }).ToList()
                 }
             });
+
+            return changes;
         }
 
         if (oldState.Game.Players != newState.Game.Players)
