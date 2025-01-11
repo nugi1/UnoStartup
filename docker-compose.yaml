@@ -6,7 +6,7 @@ services:
       context: .  # Build context for UnoStartup
       dockerfile: Dockerfile
     ports:
-      - "5001:80"  # Map container port 80 to host port 5000
+      - "5001:80"  # Map container port 80 to host port 5001
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__GameDatabase=Host=postgres;Database=GameDatabase;Username=postgres;Password=Road2Globlob123;TrustServerCertificate=True
@@ -14,6 +14,7 @@ services:
       - postgres  # Ensure PostgreSQL starts before UnoStartup
     networks:
       - unoapp-network
+    entrypoint: ["./wait-for-it.sh", "postgres:5432", "--", "dotnet", "UnoStartup.dll"]
 
   postgres:
     image: postgres:15  # Official PostgreSQL image
