@@ -734,6 +734,9 @@ namespace UnoAccess.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<int>("DrawStack")
+                        .HasColumnType("integer");
+
                     b.Property<Guid?>("GameId")
                         .HasColumnType("uuid");
 
