@@ -581,23 +581,23 @@ public class GameStateService : IGameStateService
 
             if (oldState.Game.Players != newState.Game.Players)
             {
-                changes.Add(new GameStateChange
+            changes.Add(new GameStateChange
+            {
+                Type = "GamePlayersChanged",
+                Data = newState.Game.Players.Select(p => new PlayerState
                 {
-                    Type = "GamePlayersChanged",
-                    Data = newState.Game.Players.Select(p => new PlayerState
+                    ConnectionId = p.ConnectionId,
+                    Score = p.Score,
+                    Username = p.Username,
+                    UnoSaid = p.UnoSaid,
+                    Cards = p.Cards.Select(c => new Shared.DTOs.CardDto
                     {
-                        ConnectionId = p.ConnectionId,
-                        Score = p.Score,
-                        Username = p.Username,
-                        UnoSaid = p.UnoSaid,
-                        Cards = p.Cards.Select(c => new Shared.DTOs.CardDto
-                        {
-                            Color = c.Color,
-                            Value = c.Value,
-                        }).ToList(),
-                        GameId = newState.Game.Id,
-                    })
-                });
+                        Color = c.Color,
+                        Value = c.Value,
+                    }).ToList(),
+                    GameId = newState.Game.Id,
+                }).ToList()
+            });
             }
 
             if (oldState.Game.Round != null && oldState.Game.Round.TopCard != newState.Game.Round.TopCard)
@@ -617,11 +617,11 @@ public class GameStateService : IGameStateService
                 });
             }
 
-            foreach (var player in oldState.Game.Players)
+            foreach (var newPlayerState in newState.Game.Players)
             {
-                var newPlayerState = newState.Game.Players.First(p => p.Id == player.Id);
+                var player = oldState.Game.Players.FirstOrDefault(p => p.Id == newPlayerState.Id);
 
-                if (newPlayerState.Cards != player.Cards)
+                if (player == null || newPlayerState.Cards != player.Cards)
                 {
                     changes.Add(new GameStateChange
                     {
@@ -639,7 +639,7 @@ public class GameStateService : IGameStateService
                     });
                 }
 
-                if (newPlayerState.Score != player.Score)
+                if (player != null && newPlayerState.Score != player.Score)
                 {
                     changes.Add(new GameStateChange()
                     {
