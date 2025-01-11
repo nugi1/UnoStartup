@@ -12,8 +12,8 @@ using UnoAccess.Context;
 namespace UnoAccess.Migrations
 {
     [DbContext(typeof(UnoContext))]
-    [Migration("20250110114446_UpdateEntities")]
-    partial class UpdateEntities
+    [Migration("20250111145330_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -736,6 +736,9 @@ namespace UnoAccess.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<int>("DrawStack")
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("GameId")
                         .HasColumnType("uuid");
