@@ -41,6 +41,7 @@ namespace UnoStartup
                     case "GameCreated":
                         var gameCreatedDto = change.Data as GameCreatedDto;
                         await Groups.AddToGroupAsync(Context.ConnectionId, gameCreatedDto.GameId.ToString());
+                        await Clients.Group(gameCreatedDto.GameId.ToString()).SendAsync("GameCreated", gameCreatedDto.GameId, gameCreatedDto.Players);
                         break;
                     case "GamePlayersChanged":
                         var players = change.Data as List<PlayerState>;
