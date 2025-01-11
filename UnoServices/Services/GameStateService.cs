@@ -579,8 +579,8 @@ public class GameStateService : IGameStateService
             return changes;
         }
 
-            if (oldState.Game.Players != newState.Game.Players)
-            {
+        if (oldState.Game.Players != newState.Game.Players)
+        {
             changes.Add(new GameStateChange
             {
                 Type = "GamePlayersChanged",
@@ -598,75 +598,75 @@ public class GameStateService : IGameStateService
                     GameId = newState.Game.Id,
                 }).ToList()
             });
-            }
+        }
 
-            if (oldState.Game.Round != null && oldState.Game.Round.TopCard != newState.Game.Round.TopCard)
+        if (oldState.Game.Round == null || oldState.Game.Round.TopCard != newState.Game.Round.TopCard)
+        {
+            changes.Add(new GameStateChange
+            {
+                Type = "TopCardChanged",
+                Data = new GameTopCardDto
+                {
+                    GameId = newState.Game.Id,
+                    Card = new Shared.DTOs.CardDto
+                    {
+                        Color = newState.Game.Round.TopCard.Color,
+                        Value = newState.Game.Round.TopCard.Value,
+                    }
+                }
+            });
+        }
+
+        foreach (var newPlayerState in newState.Game.Players)
+        {
+            var player = oldState.Game.Players.FirstOrDefault(p => p.Id == newPlayerState.Id);
+
+            if (player == null || newPlayerState.Cards != player.Cards)
             {
                 changes.Add(new GameStateChange
                 {
-                    Type = "TopCardChanged",
-                    Data = new GameTopCardDto
+                    Type = "PlayerCardsChanged",
+                    Data = new GamePlayerCards
                     {
                         GameId = newState.Game.Id,
-                        Card = new Shared.DTOs.CardDto
+                        Cards = newPlayerState.Cards.Select(c => new Shared.DTOs.CardDto
                         {
-                            Color = newState.Game.Round.TopCard.Color,
-                            Value = newState.Game.Round.TopCard.Value,
-                        }
+                            Color = c.Color,
+                            Value = c.Value,
+                        }).ToList(),
+                        ConnectionId = newPlayerState.ConnectionId
                     }
                 });
             }
 
-            foreach (var newPlayerState in newState.Game.Players)
+            if (player != null && newPlayerState.Score != player.Score)
             {
-                var player = oldState.Game.Players.FirstOrDefault(p => p.Id == newPlayerState.Id);
-
-                if (player == null || newPlayerState.Cards != player.Cards)
+                changes.Add(new GameStateChange()
                 {
-                    changes.Add(new GameStateChange
+                    Type = "PlayerScoreChanged",
+                    Data = new GameScoreDto
                     {
-                        Type = "PlayerCardsChanged",
-                        Data = new GamePlayerCards
-                        {
-                            GameId = newState.Game.Id,
-                            Cards = newPlayerState.Cards.Select(c => new Shared.DTOs.CardDto
-                            {
-                                Color = c.Color,
-                                Value = c.Value,
-                            }).ToList(),
-                            ConnectionId = newPlayerState.ConnectionId
-                        }
-                    });
-                }
-
-                if (player != null && newPlayerState.Score != player.Score)
-                {
-                    changes.Add(new GameStateChange()
-                    {
-                        Type = "PlayerScoreChanged",
-                        Data = new GameScoreDto
-                        {
-                            ConnectionId = newPlayerState.ConnectionId,
-                            Score = newPlayerState.Score,
-                        }
-                    });
-                }
-
-                if (newPlayerState.IsTurn == true)
-                {
-                    changes.Add(new GameStateChange()
-                    {
-                        Type = "ChangedTurn",
-                        Data = new GameTurnDto
-                        {
-                            ConnectionId = newPlayerState.ConnectionId,
-                            Username = newPlayerState.Username,
-                        }
-                    });
-                }
+                        ConnectionId = newPlayerState.ConnectionId,
+                        Score = newPlayerState.Score,
+                    }
+                });
             }
 
-            if (oldState.Game.Round != null && oldState.Game.Round.Played != newState.Game.Round.Played)
+            if (newPlayerState.IsTurn == true)
+            {
+                changes.Add(new GameStateChange()
+                {
+                    Type = "ChangedTurn",
+                    Data = new GameTurnDto
+                    {
+                        ConnectionId = newPlayerState.ConnectionId,
+                        Username = newPlayerState.Username,
+                    }
+                });
+            }
+        }
+
+        if (oldState.Game.Round == null || oldState.Game.Round.Played != newState.Game.Round.Played)
             {
                 changes.Add(new GameStateChange
                 {

@@ -27,11 +27,6 @@ namespace UnoStartup
             action.ConnectionId = Context.ConnectionId;
             var newState = await _gameStateService.UpdateGameState(action);
 
-            if (!newState.Game.Players.Select(p => p.ConnectionId).Contains(Context.ConnectionId))
-            {
-                await Groups.AddToGroupAsync(Context.ConnectionId, newState.GameId.ToString());
-            }
-
             var changes = _gameStateService.GetGameStateChanges(oldState, newState);
 
             await BroadCastChanges(changes, newState.GameId ?? throw new NotImplementedException());
@@ -83,7 +78,7 @@ namespace UnoStartup
                         break;
                     case "PlayerCardsChanged":
                         var cards = change.Data as GamePlayerCards;
-                        await Clients.Client(cards.ConnectionId).SendAsync("NewPlayerCards", cards);
+                        await Clients.Client(cards.ConnectionId).SendAsync("NewPlayerCards", cards.Cards);
                         break;
                     case "PlayerScoreChanged":
                         var playerScore = change.Data as GameScoreDto;
