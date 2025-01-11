@@ -45,12 +45,11 @@ public class Program
             dbContext.Database.Migrate();
         }
 
+        app.UseCors("AllowSpecificOrigins");
+
         app.MapHub<UnoHub>("/uno/hub");
 
         app.MapControllers();
-
-        app.UseCors("AllowSpecificOrigins");
-
         app.Run();
     }
 }
