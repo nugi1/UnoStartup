@@ -15,7 +15,6 @@ public class Program
 
         UnoAccess.Configuration.DataAccessConfiguration.AddAccessConfig(builder.Services, builder.Configuration);
         UnoServices.Configuration.DataServicesConfiguration.AddServicesConfig(builder.Services, builder.Configuration);
-
         builder.Services.AddSignalR();
 
         builder.Services.AddCors(options =>
@@ -35,9 +34,6 @@ public class Program
         {
             app.MapOpenApi();
         }
-
-        app.UseHttpsRedirection();
-
         app.UseAuthorization();
 
         using (var scope = app.Services.CreateScope())

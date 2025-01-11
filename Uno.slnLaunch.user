@@ -3,7 +3,7 @@
     "Name": "New Profile",
     "Projects": [
       {
-        "Path": "UnoStartup\\UnoStartup.csproj",
+        "Path": "UnoClient\\UnoClient.csproj",
         "Action": "Start"
       }
     ]

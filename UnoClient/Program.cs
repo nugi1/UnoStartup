@@ -3,7 +3,7 @@ using Shared.DTOs.Actions;
 using UnoAccess.Entities;
 using UnoServices.Delegates;
 
-var hubUrl = "https://localhost:7213/uno/hub";
+var hubUrl = "http://localhost:5001/uno/hub";
 
 var connection = new HubConnectionBuilder().WithUrl(hubUrl).Build();
 
