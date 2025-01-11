@@ -68,7 +68,11 @@ namespace UnoStartup
                             await Groups.AddToGroupAsync(player.ConnectionId, currentGameId);
                         }
 
-                        await Clients.Group(currentGameId).SendAsync("GamePlayersChanged", players);
+                        foreach (var player in players)
+                        {
+                            await Clients.Client(player.ConnectionId).SendAsync("GamePlayersChanged", players.Where(p => p.ConnectionId != player.ConnectionId), player);
+                        }
+
                         break;
                     case "RoundStarted":
                         break;
