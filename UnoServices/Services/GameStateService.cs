@@ -61,13 +61,11 @@ public class GameStateService : IGameStateService
                 ActionName = "ReverseTurn",
                 Action = ReverseTurn
             },
-            /*
             new DelegateAction()
             {
                 ActionName = "DrawCard",
                 Action = DrawCard
             },
-            */
             new DelegateAction()
             {
                 ActionName = "PlayWildDrawTwo",
@@ -414,19 +412,18 @@ public class GameStateService : IGameStateService
         return gameState;
     }
 
-    /*
     private async Task<GameState> DrawCard(PlayerAction action)
     {
-        var player = await _unitOfWork.Players.ReadOneAsync(
-            predicate: p => p.ConnectionId == action.ConnectionId,
-            include: p => p.Include(e => e.Round));
-
-        var drawnCard = player.Round.CardsInPlay.OrderBy(cp => cp.Position).First();
-        var card = await _unitOfWork.Cards.ReadByIdAsync(drawnCard.CardId);
-
-        player.Round.CardsInPlay.Remove(drawnCard);
-
         var transaction = await _unitOfWork.BeginTransactionAsync();
+
+        var player = await _playerService.GetTurn(action.GameId);
+        var round = await _gameService.GetRound(action.GameId);
+        
+        var cardsInPlay = await _roundService.GetCardsInRound(round.Id);
+        var drawnCard = cardsInPlay.First();
+        await _playerCardService.GiveCardToPlayer(player.Id, drawnCard.CardId);
+        await _roundService.RemoveCardInRoundAsync(round.Id, drawnCard.CardId);
+        
         try
         {
             await _unitOfWork.SaveAsync();
@@ -441,7 +438,6 @@ public class GameStateService : IGameStateService
 
         return gameState;
     }
-    */
 
     private async Task<GameState> PlayedDrawTwo(PlayerAction action)
     {

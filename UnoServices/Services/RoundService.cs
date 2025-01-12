@@ -47,9 +47,9 @@ public class RoundService : IRoundService
         await _unitOfWork.SaveAsync();
     }
 
-    public async Task RemoveCardInRoundAsync(RoundCard roundCard)
+    public async Task RemoveCardInRoundAsync(Guid roundId, Guid cardId)
     {
-        _unitOfWork.RoundCards.DeleteByEntity(roundCard);
+        await _unitOfWork.RoundCards.DeleteBy(roundId, cardId);
 
         await _unitOfWork.SaveAsync();
     }
