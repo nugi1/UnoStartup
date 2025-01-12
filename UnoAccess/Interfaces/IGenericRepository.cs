@@ -7,6 +7,8 @@ namespace UnoAccess.Interfaces;
 public interface IGenericRepository<T>
         where T : class
 {
+    void DeleteByEntity(T entity);
+    
     Task<T> CreateAsync(T entity);
 
     Task<T?> ReadByIdAsync(object id);

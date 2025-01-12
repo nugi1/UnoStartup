@@ -32,6 +32,11 @@ public class GenericRepository<T> : IGenericRepository<T>
         }
     }
 
+    public void DeleteByEntity(T entity)
+    {
+        DbSet.Remove(entity);
+    }
+
     public async Task<bool> ExistsAsync(Expression<Func<T, bool>> condition)
     {
         return await DbSet.AnyAsync(condition);

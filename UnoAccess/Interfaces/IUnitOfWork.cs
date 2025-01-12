@@ -14,10 +14,14 @@ public interface IUnitOfWork : IDisposable
     IPlayerRepository Players { get; }
 
     IGameRepository Games { get; }
+    
+    IPlayerCardRepository PlayerCards { get; }
 
     Task<int> SaveAsync();
 
     Task<int> SaveAsync(bool logChanges);
 
     Task<IDbContextTransaction> BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted);
+
+    void Detach<TEntity>(TEntity entity);
 }

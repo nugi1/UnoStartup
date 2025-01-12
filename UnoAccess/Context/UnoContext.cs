@@ -11,6 +11,7 @@ public class UnoContext : DbContext
     public DbSet<Player> Players { get; set; }
     public DbSet<Card> Cards { get; set; }
     public DbSet<RoundCard> RoundCards { get; set; }
+    public DbSet<PlayerCard> PlayerCards { get; set; }
 
     public UnoContext(DbContextOptions<UnoContext> options) : base(options)
     {
@@ -41,7 +42,7 @@ public class UnoContext : DbContext
         {
             e.HasKey(p => p.Id);
 
-            e.HasOne(p => p.Round).WithMany().HasForeignKey(p => p.RoundId);
+            e.HasOne(p => p.Game).WithMany(g => g.Players).HasForeignKey(p => p.GameId);
         });
 
         modelBuilder.Entity<Card>(e =>
@@ -56,6 +57,15 @@ public class UnoContext : DbContext
             e.HasKey(c => new { c.RoundId, c.CardId });
 
             e.HasOne(rc => rc.Round).WithMany(r => r.CardsInPlay).HasForeignKey(rc => rc.RoundId);
+        });
+
+        modelBuilder.Entity<PlayerCard>(e =>
+        {
+            e.HasKey(c => new { c.CardId, c.PlayerId });
+
+            e.HasOne<Card>(e => e.Card).WithMany().HasForeignKey(e => e.CardId);
+
+            e.HasOne<Player>(e => e.Player).WithMany().HasForeignKey(e => e.PlayerId);
         });
     }
 

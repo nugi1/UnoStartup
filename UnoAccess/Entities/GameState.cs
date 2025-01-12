@@ -1,4 +1,6 @@
-﻿namespace UnoAccess.Entities;
+﻿using Shared.DTOs;
+
+namespace UnoAccess.Entities;
 
 public class GameState
 {
@@ -9,4 +11,6 @@ public class GameState
     public bool GameStarted { get; set; }
 
     public Guid? RoundId { get; set; }
+
+    public IList<PlayerHand> PlayerHands { get; set; } = new List<PlayerHand>();
 }

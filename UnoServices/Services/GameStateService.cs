@@ -6,6 +6,7 @@ using Shared.States;
 using System;
 using System.Numerics;
 using System.Text.Json;
+using Shared.DTOs;
 using UnoAccess.Entities;
 using UnoAccess.Interfaces;
 using UnoServices.Delegates;
@@ -16,12 +17,20 @@ namespace UnoServices.Services;
 public class GameStateService : IGameStateService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IRoundService _roundService;
+    private readonly IPlayerCardService _playerCardService;
+    private readonly IGameService _gameService;
 
     private readonly List<DelegateAction> _actionDelegates;
+    private readonly IPlayerService _playerService;
 
-    public GameStateService(IUnitOfWork unitOfWork)
+    public GameStateService(IUnitOfWork unitOfWork, IRoundService roundService, IPlayerCardService playerCardService, IPlayerService playerService, IGameService gameService)
     {
         _unitOfWork = unitOfWork;
+        _roundService = roundService;
+        _playerCardService = playerCardService;
+        _playerService = playerService;
+        _gameService = gameService;
 
         _actionDelegates = new List<DelegateAction>()
         {
@@ -40,21 +49,25 @@ public class GameStateService : IGameStateService
                 ActionName = "PlayCard",
                 Action = PlayCard
             },
+            /*
             new DelegateAction()
             {
                 ActionName = "SkipTurn",
                 Action = SkipTurn
             },
+            */
             new DelegateAction
             {
                 ActionName = "ReverseTurn",
                 Action = ReverseTurn
             },
+            /*
             new DelegateAction()
             {
                 ActionName = "DrawCard",
                 Action = DrawCard
             },
+            */
             new DelegateAction()
             {
                 ActionName = "PlayWildDrawTwo",
@@ -108,14 +121,31 @@ public class GameStateService : IGameStateService
                             .Include(g => g.Players)
                             .Include(g => g.Round)
                             .Include(g => g.Players)
-                                 .ThenInclude(p => p.Cards)
 
         ) ?? throw new InvalidOperationException();
+
+        IList<PlayerHand> playerHands = new List<PlayerHand>();
+        foreach (var player in game.Players)
+        {
+            var cards = await _unitOfWork.PlayerCards.GetPlayerCards(player.Id);
+
+            var playerCards = new PlayerHand()
+            {
+                PlayerId = player.Id,
+                Cards = cards.Select(c => new CardDto()
+                {
+                    Color = c.Color,
+                    Value = c.Value
+                }).ToList()
+            };
+            playerHands.Add(playerCards);
+        }
 
         var result = new GameState()
         {
             GameId = gameId,
             Game = game,
+            PlayerHands = playerHands,
             RoundId = game.RoundId,
             GameStarted = game.Round != null
         };
@@ -133,10 +163,8 @@ public class GameStateService : IGameStateService
                                             .ThenInclude(r => r.CardsInPlay)
                                         .Include(g => g.Players)
                                         .Include(g => g.Round)
-                                        .Include(g => g.Players)
-                                            .ThenInclude(p => p.Cards),
+                                        .Include(g => g.Players),
                         noTracking: false) ?? throw new NotImplementedException();
-
 
         return game;
     }
@@ -191,86 +219,57 @@ public class GameStateService : IGameStateService
             throw new NotImplementedException();
         }
 
+        // Inputs of Join Game
         var joinGameDto = DeserializeContent<JoinGameDto>(action.ActionData);
+        var gameId = joinGameDto.GameId;
+        var username = joinGameDto.Username;
+        var connectionId = action.ConnectionId;
 
-        var position = (await _unitOfWork.Games
-            .ReadOneAsync(predicate: g => g.Id == joinGameDto.GameId, include: g => g.Include(e => e.Players))
-            ?? throw new NotImplementedException())
-            .Players.OrderByDescending(p => p.Position)
-            .First().Position + 1;
+        // Logic of Join Game
+        var position = await _playerService.GetHighestPosition(gameId);
 
         var player = new Player()
         {
-            Username = joinGameDto.Username,
-            ConnectionId = action.ConnectionId,
-            Position = position
+            Username = username,
+            ConnectionId = connectionId,
+            Position = position + 1,
+            GameId = gameId
         };
-        var game = await GetGame(joinGameDto.GameId);
+        await _playerService.AddPlayerAsync(player);
 
-        await _unitOfWork.Players.CreateAsync(player);
-        game.Players.Add(player);
-        await _unitOfWork.SaveAsync();
-        if (game.Players.Count == game.PlayerQuantity)
+        var players = (await _playerService.GetPlayersBy(gameId)).ToList();
+        var playersQuantity = await _gameService.GetPlayersQuantity(gameId);
+        
+        if (players.Count() == playersQuantity)
         {
             var round = new Round()
             {
-                GameId = game.Id,
+                GameId = gameId,
+                Number = 1
             };
 
-            round.CardsInPlay = (await ShuffleCards(round.Id)).OrderBy(cp => cp.Position).ToList();
-            game.RoundId = round.Id;
-            game.Round = round;
+            await _roundService.CreateRound(round);
+            await _roundService.FillTheCardsInPlayAsync(round.Id);
+            
+            await _gameService.UpdateRoundId(gameId, round.Id);
 
-            await _unitOfWork.Rounds.CreateAsync(round);
-
-            for (int i = 0; i < 7 * game.PlayerQuantity; i++)
-            {
-                var cardId = round.CardsInPlay[i].CardId;
-                var card = await _unitOfWork.Cards.ReadByIdAsync(cardId);
-
-                round.CardsInPlay.Remove(round.CardsInPlay[i]);
-
-                game.Players[i % game.PlayerQuantity].Cards.Add(card);
-            }
-
-            var topCardId = round.CardsInPlay.First().CardId;
-            var topCard = await _unitOfWork.Cards.ReadByIdAsync(topCardId);
-
+            var cardsInPlay = (await _roundService.GetCardsInRound(round.Id)).OrderBy(c => c.Position).Select(c => c.CardId).ToList();
+            await _playerCardService.GiveCardsToPlayers(players, cardsInPlay, round.Id);
+            
+            var roundCards = await _roundService.GetCardsInRound(round.Id);
+            var topCard = roundCards.OrderBy(r => r.Position).First().Card;
+            
             while (CheckForWild(topCard.Value))
             {
-                topCardId = (await ShuffleCards(round.Id)).OrderBy(cp => cp.Position).First().CardId;
-                topCard = await _unitOfWork.Cards.ReadByIdAsync(topCardId);
+                topCard = await _roundService.ShuffleUntilTopCardAsync(round.Id);
             }
+            
+            await _roundService.UpdateRoundTopCardAsync(round.Id, topCard);
 
-            round.CardsInPlay.Remove(round.CardsInPlay.First());
-            round.TopCardId = topCardId;
-            round.TopCard = topCard;
-
-            var playerTurn = game.Players.OrderBy(p => p.Position).First();
-            playerTurn.IsTurn = true;
-
-            foreach (var p in game.Players)
-            {
-                p.RoundId = game.Round.Id;
-                p.Round = game.Round;
-            }
-
-            _unitOfWork.Players.Update(playerTurn);
-
-            var transaction = await _unitOfWork.BeginTransactionAsync();
-            try
-            {
-                await _unitOfWork.SaveAsync();
-                await transaction.CommitAsync();
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            await _playerService.SetTurn(gameId, 0);
         }
 
-        var state = await GetGameState(game.Id);
+        var state = await GetGameState(gameId);
 
         return state;
     }
@@ -301,50 +300,44 @@ public class GameStateService : IGameStateService
 
         return false;
     }
-
+    
     private async Task<GameState> PlayCard(PlayerAction action)
     {
         if (action.ActionData == null)
         {
             throw new NotImplementedException();
         }
-        var game = await _unitOfWork.Games.ReadOneAsync(
-            predicate: g => g.Id == action.GameId,
-            noTracking: true);
-
-        var player = await _unitOfWork.Players.ReadOneAsync(
-            predicate: p => p.ConnectionId == action.ConnectionId,
-            include: p => p.Include(p => p.Cards).Include(p => p.Round).ThenInclude(r => r.TopCard));
-
-        var nextPlayer = await _unitOfWork.Players.ReadOneAsync(
-            predicate: p => p.RoundId == player.RoundId && p.Position == (player.Position + 1) % game.PlayerQuantity);
-
+        
+        // Inputs of play card
         var playedCard = DeserializeContent<PlayCardDto>(action.ActionData);
+        var gameId = action.GameId;
+        
+        var round = await _gameService.GetRound(gameId);
+        var topCard = round.TopCard;
 
-        if ((player.Round.TopCard.Value == CardValue.DrawTwo || player.Round.TopCard.Value == CardValue.WildDrawFour)
-            && (playedCard.CardValue == CardValue.DrawTwo || playedCard.CardValue == CardValue.WildDrawFour))
-        {
-            player.DrawStack += 4;
-            nextPlayer.DrawStack = player.DrawStack;
-            player.DrawStack = 0;
-            nextPlayer.IsTurn = true;
-        }
-
-        if (IsValidMove(player.Round.TopCard, playedCard))
-        {
-            var card = (await _unitOfWork.Cards.ReadOneAsync(
-                predicate: c => c.Color == playedCard.CardColor && c.Value == playedCard.CardValue));
-            player.Round.TopCard = card;
-            player.Cards.Remove(card);
-        }
-
-        player.IsTurn = false;
-        nextPlayer.IsTurn = true;
-
-        _unitOfWork.Players.Update(player);
-        _unitOfWork.Players.Update(nextPlayer);
-
+        var player = await _playerService.GetTurn(gameId);
+        var quantity = await _gameService.GetPlayersQuantity(gameId);
+        
         var transaction = await _unitOfWork.BeginTransactionAsync();
+        
+        var card = await _unitOfWork.Cards.ReadOneAsync(
+            predicate: c => c.Color == playedCard.CardColor && c.Value == playedCard.CardValue, noTracking: true);
+
+        if (await _playerCardService.CardExistsForPlayer(player.Id, card.Id))
+        {
+            Console.WriteLine("As");
+        }
+        
+        if (IsValidMove(topCard, playedCard))
+        {
+            await _roundService.UpdateRoundTopCardAsync(round.Id, card);
+            
+            await _playerCardService.RemovePlayerCardAsync(card.Id, player.Id);
+
+            await _playerService.ChangePlayerTurnAsync(player, quantity);
+            await _playerService.SetTurn(gameId ?? throw new InvalidOperationException(), (player.Position + 1) % quantity);
+        }
+        
         try
         {
             await _unitOfWork.SaveAsync();
@@ -356,11 +349,11 @@ public class GameStateService : IGameStateService
             throw;
         }
 
-        var gameState = await GetGameState(player.Round.GameId);
+        var gameState = await GetGameState(gameId ?? throw new NotImplementedException());
 
         return gameState;
     }
-
+/*
     private async Task<GameState> SkipTurn(PlayerAction action)
     {
         var playerSkipped = await _unitOfWork.Players.ReadOneAsync(
@@ -391,6 +384,7 @@ public class GameStateService : IGameStateService
 
         return gameState;
     }
+    */
 
     private async Task<GameState> ReverseTurn(PlayerAction action)
     {
@@ -425,17 +419,17 @@ public class GameStateService : IGameStateService
         return gameState;
     }
 
+    /*
     private async Task<GameState> DrawCard(PlayerAction action)
     {
         var player = await _unitOfWork.Players.ReadOneAsync(
             predicate: p => p.ConnectionId == action.ConnectionId,
-            include: p => p.Include(e => e.Cards).Include(e => e.Round));
+            include: p => p.Include(e => e.Round));
 
         var drawnCard = player.Round.CardsInPlay.OrderBy(cp => cp.Position).First();
         var card = await _unitOfWork.Cards.ReadByIdAsync(drawnCard.CardId);
 
         player.Round.CardsInPlay.Remove(drawnCard);
-        player.Cards.Add(card);
 
         var transaction = await _unitOfWork.BeginTransactionAsync();
         try
@@ -452,6 +446,7 @@ public class GameStateService : IGameStateService
 
         return gameState;
     }
+    */
 
     private async Task<GameState> PlayedDrawTwo(PlayerAction action)
     {
@@ -540,39 +535,6 @@ public class GameStateService : IGameStateService
         throw new NotImplementedException();
     }
 
-    private async Task<List<RoundCard>> ShuffleCards(Guid roundId)
-    {
-        var cards = (await _unitOfWork.RoundCards.ReadAsync(
-            predicate: rc => rc.RoundId == roundId)).ToList();
-
-        if (cards.Count == 0)
-        {
-            cards = (await _unitOfWork.Cards.ReadAsync()).Select(c => new RoundCard()
-            {
-                CardId = c.Id,
-                RoundId = roundId
-            }).ToList();
-        }
-
-
-        var random = new Random();
-        for (int i = cards.Count - 1; i > 0; i--)
-        {
-            int j = random.Next(0, i + 1);
-
-            var temp = cards[i];
-            cards[i] = cards[j];
-            cards[j] = temp;
-        }
-
-        for (int i = 0; i < cards.Count; i++)
-        {
-            cards[i].Position = i + 1;
-        }
-
-        return cards;
-    }
-
     public IEnumerable<GameStateChange> GetGameStateChanges(GameState? oldState, GameState newState)
     {
         var changes = new List<GameStateChange>();
@@ -596,7 +558,7 @@ public class GameStateService : IGameStateService
             return changes;
         }
 
-        if (oldState.Game.Players != newState.Game.Players)
+        if (oldState.Game.Players.Count != newState.Game.Players.Count)
         {
             changes.Add(new GameStateChange
             {
@@ -607,11 +569,7 @@ public class GameStateService : IGameStateService
                     Score = p.Score,
                     Username = p.Username,
                     UnoSaid = p.UnoSaid,
-                    Cards = p.Cards.Select(c => new Shared.DTOs.CardDto
-                    {
-                        Color = c.Color,
-                        Value = c.Value,
-                    }).ToList(),
+                    Cards = newState.PlayerHands.First(ph => ph.PlayerId == p.Id).Cards,
                     GameId = newState.Game.Id,
                 }).ToList()
             });
@@ -638,7 +596,7 @@ public class GameStateService : IGameStateService
         {
             var player = oldState.Game.Players.FirstOrDefault(p => p.Id == newPlayerState.Id);
 
-            if (player == null || newPlayerState.Cards != player.Cards)
+            if (player == null || !newState.PlayerHands.First(ph => ph.PlayerId == newPlayerState.Id).Cards.Equals(oldState.PlayerHands.First(ph => ph.PlayerId == player.Id).Cards))
             {
                 changes.Add(new GameStateChange
                 {
@@ -646,11 +604,7 @@ public class GameStateService : IGameStateService
                     Data = new GamePlayerCards
                     {
                         GameId = newState.Game.Id,
-                        Cards = newPlayerState.Cards.Select(c => new Shared.DTOs.CardDto
-                        {
-                            Color = c.Color,
-                            Value = c.Value,
-                        }).ToList(),
+                        Cards = newState.PlayerHands.First(ph => ph.PlayerId == newPlayerState.Id).Cards,
                         ConnectionId = newPlayerState.ConnectionId
                     }
                 });
@@ -683,7 +637,8 @@ public class GameStateService : IGameStateService
                 });
             }
         }
-
+        
+        /*
         if (oldState.Game.Round == null || oldState.Game.Round.Played != newState.Game.Round.Played)
             {
                 changes.Add(new GameStateChange
@@ -710,6 +665,7 @@ public class GameStateService : IGameStateService
                     }
                 });
             }
+            */
 
         return changes;
     }
