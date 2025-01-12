@@ -171,7 +171,7 @@ public class GameStateService : IGameStateService
             Username = createGameDto.PlayerName,
             ConnectionId = action.ConnectionId,
             IsOwner = true,
-            Position = 1
+            Position = 0
         };
 
         defaultGame.Players.Add(defaultPlayer);
@@ -207,7 +207,9 @@ public class GameStateService : IGameStateService
         };
         var game = await GetGame(joinGameDto.GameId);
 
+        await _unitOfWork.Players.CreateAsync(player);
         game.Players.Add(player);
+        await _unitOfWork.SaveAsync();
         if (game.Players.Count == game.PlayerQuantity)
         {
             var round = new Round()
@@ -216,7 +218,10 @@ public class GameStateService : IGameStateService
             };
 
             round.CardsInPlay = (await ShuffleCards(round.Id)).OrderBy(cp => cp.Position).ToList();
+            game.RoundId = round.Id;
             game.Round = round;
+
+            await _unitOfWork.Rounds.CreateAsync(round);
 
             for (int i = 0; i < 7 * game.PlayerQuantity; i++)
             {
@@ -243,6 +248,14 @@ public class GameStateService : IGameStateService
 
             var playerTurn = game.Players.OrderBy(p => p.Position).First();
             playerTurn.IsTurn = true;
+
+            foreach (var p in game.Players)
+            {
+                p.RoundId = game.Round.Id;
+                p.Round = game.Round;
+            }
+
+            _unitOfWork.Players.Update(playerTurn);
 
             var transaction = await _unitOfWork.BeginTransactionAsync();
             try
@@ -304,7 +317,7 @@ public class GameStateService : IGameStateService
             include: p => p.Include(p => p.Cards).Include(p => p.Round).ThenInclude(r => r.TopCard));
 
         var nextPlayer = await _unitOfWork.Players.ReadOneAsync(
-            predicate: p => p.Position == (player.Position + 1) % game.PlayerQuantity);
+            predicate: p => p.RoundId == player.RoundId && p.Position == (player.Position + 1) % game.PlayerQuantity);
 
         var playedCard = DeserializeContent<PlayCardDto>(action.ActionData);
 
@@ -326,6 +339,10 @@ public class GameStateService : IGameStateService
         }
 
         player.IsTurn = false;
+        nextPlayer.IsTurn = true;
+
+        _unitOfWork.Players.Update(player);
+        _unitOfWork.Players.Update(nextPlayer);
 
         var transaction = await _unitOfWork.BeginTransactionAsync();
         try

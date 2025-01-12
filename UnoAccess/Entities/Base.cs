@@ -4,7 +4,7 @@ public class Base
 {
     public Base()
     {
-        Id = new Guid();
+        Id = Guid.NewGuid();
     }
-    public Guid Id { get; set; } = new Guid();
+    public Guid Id { get; set; } = Guid.NewGuid();
 }
