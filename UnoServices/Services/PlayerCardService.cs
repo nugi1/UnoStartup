@@ -59,4 +59,15 @@ public class PlayerCardService : IPlayerCardService
 
         return exists != null;
     }
+
+    public async Task GiveCardToPlayer(Guid playerId, Guid cardId)
+    {
+        await _unitOfWork.PlayerCards.AddPlayerCard(new PlayerCard()
+        {
+            PlayerId = playerId,
+            CardId = cardId
+        });
+
+        await _unitOfWork.SaveAsync();
+    }
 }
