@@ -322,17 +322,12 @@ public class GameStateService : IGameStateService
         
         var card = await _unitOfWork.Cards.ReadOneAsync(
             predicate: c => c.Color == playedCard.CardColor && c.Value == playedCard.CardValue, noTracking: true);
-
-        if (await _playerCardService.CardExistsForPlayer(player.Id, card.Id))
-        {
-            Console.WriteLine("As");
-        }
         
         if (IsValidMove(topCard, playedCard))
         {
             await _roundService.UpdateRoundTopCardAsync(round.Id, card);
             
-            await _playerCardService.RemovePlayerCardAsync(card.Id, player.Id);
+            await _playerCardService.RemovePlayerCardAsync(player.Id, playedCard);
 
             await _playerService.ChangePlayerTurnAsync(player, quantity);
             await _playerService.SetTurn(gameId ?? throw new InvalidOperationException(), (player.Position + 1) % quantity);
