@@ -15,11 +15,12 @@ public static class DataAccessConfiguration
     {
         serviceCollection.AddDbContext<UnoContext>((sp, options) =>
         {
-            options.UseNpgsql(configuration.GetConnectionString("GameDatabase"));
+            options.UseNpgsql(configuration.GetConnectionString("GameDatabase")).EnableSensitiveDataLogging();
         });
 
         serviceCollection.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
         serviceCollection.AddScoped<IGameRepository, GameRepository>();
+        serviceCollection.AddScoped<IPlayerCardRepository, PlayerCardRepository>();
         serviceCollection.AddScoped<IRoundRepository, RoundRepository>();
         serviceCollection.AddScoped<IRoundCardRepository, RoundCardRepository>();
         serviceCollection.AddScoped<ICardRepository, CardRepository>();

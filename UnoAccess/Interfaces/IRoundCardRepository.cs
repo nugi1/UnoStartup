@@ -9,4 +9,5 @@ namespace UnoAccess.Interfaces;
 
 public interface IRoundCardRepository : IGenericRepository<RoundCard>
 {
+    Task DeleteBy(Guid id1, Guid id2);
 }

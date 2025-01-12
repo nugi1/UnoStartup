@@ -16,10 +16,9 @@ public class Player : Base
     public int Position { get; set; }
 
     public bool IsOwner { get; set; }
-
-    public Guid? RoundId { get; set; }
-
-    public Round? Round { get; set; }
+    
+    public Guid GameId { get; set; }
+    public Game Game { get; set; }
         
     [MaxLength(50)]
     public string ConnectionId { get; set; } = null!;
@@ -29,6 +28,4 @@ public class Player : Base
     public DateTime SayUnoUntil { get; set; }
 
     public int DrawStack { get; set; }
-
-    public IList<Card> Cards { get; set; } = new List<Card>();
 }

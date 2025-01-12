@@ -4,7 +4,7 @@ namespace UnoAccess.Entities;
 
 public class Round : Base
 {
-    public int Played { get; set; }
+    public int Number { get; set; }
 
     public Guid? TopCardId { get; set; }
 

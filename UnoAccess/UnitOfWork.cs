@@ -18,7 +18,8 @@ public class UnitOfWork : IUnitOfWork
         IRoundCardRepository cardRoundRepository,
         IPlayerRepository playerRepository,
         IGameRepository gameRepository,
-        IRoundRepository roundRepository)
+        IRoundRepository roundRepository,
+        IPlayerCardRepository playerCardRepository)
     {
         _context = context;
         Cards = cardRepository;
@@ -26,6 +27,7 @@ public class UnitOfWork : IUnitOfWork
         RoundCards = cardRoundRepository;
         Games = gameRepository;
         Players = playerRepository;
+        PlayerCards = playerCardRepository;
     }
 
     public ICardRepository Cards { get; private set; }
@@ -37,10 +39,21 @@ public class UnitOfWork : IUnitOfWork
     public IPlayerRepository Players { get; private set; }
 
     public IGameRepository Games { get; private set; }
+    
+    public IPlayerCardRepository PlayerCards { get; private set; }
 
     public async Task<int> SaveAsync()
     {
         return await _context.SaveChangesAsync();
+    }
+    
+    public void Detach<T>(T entity)
+    {
+        var entry = _context.Entry(entity);
+        if (entry != null)
+        {
+            entry.State = EntityState.Detached;
+        }
     }
 
     public Task<int> SaveAsync(bool logChanges)
