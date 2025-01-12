@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Shared.DTOs.Actions;
 using UnoAccess.Entities;
 using UnoAccess.Interfaces;
 using UnoServices.Interfaces;
@@ -11,10 +13,12 @@ public class PlayerCardService : IPlayerCardService
     {
         _unitOfWork = unitOfWork;
     }
-    public async Task RemovePlayerCardAsync(Guid cardId, Guid playerId)
+    public async Task RemovePlayerCardAsync(Guid playerId, PlayCardDto playedCard)
     {
-        await _unitOfWork.PlayerCards.RemovePlayerCard(cardId, playerId);
+        var card = (await _unitOfWork.PlayerCards.GetPlayerCards(playerId)).First(
+            pc => pc.Color == playedCard.CardColor && pc.Value == playedCard.CardValue);
 
+        await _unitOfWork.PlayerCards.RemovePlayerCard(card.Id, playerId);
         await _unitOfWork.SaveAsync();
     }
 
