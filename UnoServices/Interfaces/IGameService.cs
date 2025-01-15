@@ -8,4 +8,7 @@ public interface IGameService
 
     Task UpdateRoundId(Guid gameId, Guid roundId);
     Task<Round> GetRound(Guid? gameId);
+    Task<bool> GetDirection(Guid gameId);
+    Task<bool> ChangeDirection(Guid gameId);
+    Task NewRoundStartedAsync(Round round);
 }

@@ -49,18 +49,6 @@ public class GameStateService : IGameStateService
                 ActionName = "PlayCard",
                 Action = PlayCard
             },
-            /*
-            new DelegateAction()
-            {
-                ActionName = "SkipTurn",
-                Action = SkipTurn
-            },
-            */
-            new DelegateAction
-            {
-                ActionName = "ReverseTurn",
-                Action = ReverseTurn
-            },
             new DelegateAction()
             {
                 ActionName = "DrawCard",
@@ -191,13 +179,14 @@ public class GameStateService : IGameStateService
         {
             PlayerQuantity = createGameDto.RequestedQuantity,
             Password = createGameDto.Password,
+            Clockwise = true
         };
         var defaultPlayer = new Player()
         {
             Username = createGameDto.PlayerName,
             ConnectionId = action.ConnectionId,
             IsOwner = true,
-            Position = 0
+            Position = 0,
         };
 
         defaultGame.Players.Add(defaultPlayer);
@@ -263,8 +252,7 @@ public class GameStateService : IGameStateService
             }
             
             await _roundService.UpdateRoundTopCardAsync(round.Id, topCard);
-
-            await _playerService.SetTurn(gameId, 0);
+            await _playerService.SetTurn(true, gameId, -1, 1, playersQuantity);
         }
 
         var state = await GetGameState(gameId);
@@ -319,16 +307,51 @@ public class GameStateService : IGameStateService
         var transaction = await _unitOfWork.BeginTransactionAsync();
         
         var card = await _unitOfWork.Cards.ReadOneAsync(
-            predicate: c => c.Color == playedCard.CardColor && c.Value == playedCard.CardValue, noTracking: true);
+            predicate: c => c.Color == playedCard.CardColor && c.Value == playedCard.CardValue && c.Id != topCard.Id, noTracking: true);
         
         if (IsValidMove(topCard, playedCard))
         {
             await _roundService.UpdateRoundTopCardAsync(round.Id, card);
             
             await _playerCardService.RemovePlayerCardAsync(player.Id, playedCard);
+            
+            bool direction = await _gameService.GetDirection(gameId ?? throw new InvalidOperationException());
 
-            await _playerService.ChangePlayerTurnAsync(player, quantity);
-            await _playerService.SetTurn(gameId ?? throw new InvalidOperationException(), (player.Position + 1) % quantity);
+            Player? nextPlayer;
+            if (card.Value == CardValue.Skip)
+            {
+                nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(), player.Position, 2, quantity);
+            }
+            else if (card.Value == CardValue.Reverse)
+            {
+                direction = await _gameService.ChangeDirection(gameId ?? throw new InvalidOperationException());
+                nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
+                    player.Position, 1, quantity);
+            }
+            else if (card.Value == CardValue.DrawTwo)
+            {
+                var p = await _playerService.GetNextPlayer(direction, player.Position, gameId, quantity);
+                await _playerCardService.GivePlayerTwoCards(p.Id, round.Id);
+                nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
+                    player.Position, 2, quantity);
+            }
+            else
+            {
+                nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
+                    player.Position, 1, quantity);
+            }
+
+            if (nextPlayer != null)
+            {
+                await _playerService.ChangePlayerTurnAsync(player);
+            }
+        }
+
+        if (player.UnoSaid && await _playerCardService.GetCardsQuantity(player.Id) == 0)
+        {
+            var score = await _playerCardService.AccumulateScoresAsync(gameId, player.Id);
+            await _playerService.UpdatePlayerScoreAsync(player, score);
+            await NewRoundStarted(gameId);
         }
         
         try
@@ -346,70 +369,28 @@ public class GameStateService : IGameStateService
 
         return gameState;
     }
-/*
-    private async Task<GameState> SkipTurn(PlayerAction action)
+
+    private async Task NewRoundStarted(Guid? gameId)
     {
-        var playerSkipped = await _unitOfWork.Players.ReadOneAsync(
-            predicate: p => p.ConnectionId == action.ConnectionId);
-        playerSkipped.IsTurn = false;
+        var round = await _gameService.GetRound(gameId);
+        await _gameService.NewRoundStartedAsync(round);
+        await _roundService.FillTheCardsInPlayAsync(round.Id);
 
-        var game = await _unitOfWork.Games.ReadOneAsync(
-            predicate: g => g.Id == action.GameId,
-            noTracking: true);
-
-        var nowTurn = await _unitOfWork.Players.ReadOneAsync(
-            predicate: p => p.Position == (playerSkipped.Position + 1) % game.PlayerQuantity);
-        nowTurn.IsTurn = true;
-
-        var transaction = await _unitOfWork.BeginTransactionAsync();
-        try
+        var players = (await _playerService.GetPlayersBy(gameId ?? throw new InvalidOperationException())).ToList();
+        
+        var cardsInPlay = (await _roundService.GetCardsInRound(round.Id)).OrderBy(c => c.Position).Select(c => c.CardId).ToList();
+        await _playerCardService.GiveCardsToPlayers(players, cardsInPlay, round.Id);
+        
+        var roundCards = await _roundService.GetCardsInRound(round.Id);
+        var topCard = roundCards.OrderBy(r => r.Position).First().Card;
+            
+        while (CheckForWild(topCard.Value))
         {
-            await _unitOfWork.SaveAsync();
-            await transaction.CommitAsync();
+            topCard = await _roundService.ShuffleUntilTopCardAsync(round.Id);
         }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
-
-        var gameState = await GetGameState(action.GameId ?? throw new NotImplementedException());
-
-        return gameState;
-    }
-    */
-
-    private async Task<GameState> ReverseTurn(PlayerAction action)
-    {
-        var player = (await _unitOfWork.Games.ReadOneAsync(
-            predicate: g => g.Id == action.GameId,
-            include: g => g.Include(e => e.Players)) ?? throw new NotImplementedException()).Players;
-
-        for (int i = 0; i < player.Count; i++)
-        {
-            player[i].Position = (player.Count - player[i].Position + 1) % player.Count;
-        }
-
-        var nowPosition = player.Where(p => p.IsTurn).First();
-        nowPosition.IsTurn = false;
-
-        var newPosition = player.Where(p => p.Position == nowPosition.Position + 1).First();
-        nowPosition.IsTurn = true;
-
-        var transaction = await _unitOfWork.BeginTransactionAsync();
-        try
-        {
-            await _unitOfWork.SaveAsync();
-            await transaction.CommitAsync();
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-        }
-
-        var gameState = await GetGameState(action.GameId ?? throw new NotImplementedException());
-
-        return gameState;
+            
+        await _roundService.UpdateRoundTopCardAsync(round.Id, topCard);
+        await _playerService.SetTurn(true, gameId ?? throw new InvalidOperationException(), -1, 1, players.Count);
     }
 
     private async Task<GameState> DrawCard(PlayerAction action)
@@ -418,11 +399,17 @@ public class GameStateService : IGameStateService
 
         var player = await _playerService.GetTurn(action.GameId);
         var round = await _gameService.GetRound(action.GameId);
+        var quantity = await _gameService.GetPlayersQuantity(action.GameId);
         
         var cardsInPlay = await _roundService.GetCardsInRound(round.Id);
         var drawnCard = cardsInPlay.First();
         await _playerCardService.GiveCardToPlayer(player.Id, drawnCard.CardId);
         await _roundService.RemoveCardInRoundAsync(round.Id, drawnCard.CardId);
+
+        await _playerService.ChangePlayerTurnAsync(player);
+        bool direction = await _gameService.GetDirection(action.GameId ?? throw new InvalidOperationException());
+        await _playerService.SetTurn(direction, action.GameId ?? throw new InvalidOperationException(), player.Position,
+            1, quantity);
         
         try
         {
@@ -516,9 +503,16 @@ public class GameStateService : IGameStateService
         throw new NotImplementedException();
     }
 
-    private Task<GameState> UnoDeclaration(PlayerAction action)
+    private async Task<GameState> UnoDeclaration(PlayerAction action)
     {
-        throw new NotImplementedException();
+        //TODO: Check if one can say uno
+        var player = await _playerService.GetTurn(action.GameId);
+
+        await _playerService.SaidUnoAsync(player);
+        
+        var gameState = await GetGameState(action.GameId ?? throw new NotImplementedException());
+
+        return gameState;
     }
 
     private Task<GameState> WinGame(PlayerAction action)

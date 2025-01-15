@@ -10,6 +10,8 @@ public class Game : Base
     public DateTime StartTime { get; set; }
 
     public DateTime EndTime { get; set; }
+    
+    public bool Clockwise { get; set; }
 
     public int PlayerQuantity { get; set; }
 

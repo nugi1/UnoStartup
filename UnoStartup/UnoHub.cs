@@ -15,7 +15,12 @@ namespace UnoStartup
         {
             _gameStateService = gameStateService;
         }
-
+        
+        // TODO: If draws card and its playable, let it play, else pass
+        // TODO: Initial card special effects handling
+        // TODO: Wild cards play logic
+        // TODO: Round refresh
+        // TODO: When round cards run out and player can not draw card to make move, renew the deck
         public async Task<GameStateDto> UpdateGameState(PlayerAction action)
         {
             GameState? oldState = null;

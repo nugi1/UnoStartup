@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Shared.DTOs.Actions;
+using Shared.Enums;
 using UnoAccess.Entities;
 using UnoAccess.Interfaces;
 using UnoServices.Interfaces;
@@ -69,5 +70,74 @@ public class PlayerCardService : IPlayerCardService
         });
 
         await _unitOfWork.SaveAsync();
+    }
+
+    public async Task GivePlayerTwoCards(Guid playerId, Guid roundId)
+    {
+        var cardsInPlay = await _unitOfWork.RoundCards.ReadAsync(
+            predicate: c => c.RoundId == roundId);
+
+        var cardsToGive = cardsInPlay.OrderBy(cp => cp.Position).Take(2);
+
+        foreach (var card in cardsToGive)
+        {
+            await _unitOfWork.PlayerCards.AddPlayerCard(new PlayerCard()
+            {
+                CardId = card.CardId,
+                PlayerId = playerId
+            });
+
+            await _unitOfWork.RoundCards.DeleteBy(roundId, card.CardId);
+        }
+
+        await _unitOfWork.SaveAsync();
+    }
+
+    public async Task<int> GetCardsQuantity(Guid playerId)
+    {
+        var playerCards = await _unitOfWork.PlayerCards.GetPlayerCards(playerId);
+
+        return playerCards.Count;
+    }
+
+    public async Task<int> AccumulateScoresAsync(Guid? gameId, Guid playerId)
+    {
+        var players = await _unitOfWork.Players.ReadAsync(
+            p => p.GameId == gameId && p.Id != playerId);
+
+        int score = 0;
+        foreach (var player in players)
+        {
+            var playerCards = await _unitOfWork.PlayerCards.GetPlayerCards(player.Id);
+            foreach (var c in playerCards)
+            {
+                score += GetCardPoints(c.Value);
+            }
+        }
+
+        return score;
+    }
+    
+    private int GetCardPoints(CardValue value)
+    {
+        return value switch
+        {
+            CardValue.Zero => 0,
+            CardValue.One => 1,
+            CardValue.Two => 2,
+            CardValue.Three => 3,
+            CardValue.Four => 4,
+            CardValue.Five => 5,
+            CardValue.Six => 6,
+            CardValue.Seven => 7,
+            CardValue.Eight => 8,
+            CardValue.Nine => 9,
+            CardValue.DrawTwo => 20,
+            CardValue.Reverse => 20,
+            CardValue.Skip => 20,
+            CardValue.Wild => 50,
+            CardValue.WildDrawFour => 50,
+            _ => throw new ArgumentOutOfRangeException(nameof(value), $"Unknown card value: {value}")
+        };
     }
 }
