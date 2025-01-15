@@ -11,4 +11,7 @@ public interface IPlayerCardService
     Task GiveCardsToPlayers(IList<Player> players, IList<Guid> cardsInPlay, Guid roundId);
     Task<bool> CardExistsForPlayer(Guid playerId, Guid cardId);
     Task GiveCardToPlayer(Guid playerId, Guid cardId);
+    Task GivePlayerTwoCards(Guid playerId, Guid roundId);
+    Task<int> GetCardsQuantity(Guid playerId);
+    Task<int> AccumulateScoresAsync(Guid? gameId, Guid playerId);
 }

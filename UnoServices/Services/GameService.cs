@@ -37,4 +37,38 @@ public class GameService : IGameService
 
         return game.Round;
     }
+
+    public async Task<bool> GetDirection(Guid gameId)
+    {
+        var game = await _unitOfWork.Games.ReadByIdAsync(gameId);
+
+        return game.Clockwise;
+    }
+
+    public async Task<bool> ChangeDirection(Guid gameId)
+    {
+        var game = await _unitOfWork.Games.ReadByIdAsync(gameId);
+
+        if (game.Clockwise)
+        {
+            game.Clockwise = false;
+        }
+        else
+        {
+            game.Clockwise = true;
+        }
+
+        _unitOfWork.Games.Update(game);
+        await _unitOfWork.SaveAsync();
+        
+        return game.Clockwise;
+    }
+
+    public async Task NewRoundStartedAsync(Round round)
+    {
+        round.Number += 1;
+
+        _unitOfWork.Rounds.Update(round);
+        await _unitOfWork.SaveAsync();
+    }
 }
