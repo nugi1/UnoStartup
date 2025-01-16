@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.EntityFrameworkCore;
+using Shared.DTOs.Actions;
+using Shared.Enums;
 using UnoAccess.Entities;
 using UnoAccess.Interfaces;
 using UnoServices.Interfaces;
@@ -106,6 +108,32 @@ public class RoundService : IRoundService
         }
 
         await _unitOfWork.SaveAsync();    
+    }
+
+    public async Task PlayedWildCardAsync(Guid roundId, PlayCardDto playedCard)
+    {
+        var round = await _unitOfWork.Rounds.ReadByIdAsync(roundId);
+
+        round.WildColor = playedCard.CardColor;
+        
+        _unitOfWork.Rounds.Update(round);
+        await _unitOfWork.SaveAsync();
+    }
+
+    public async Task<CardColor?> CheckForWildTopCardAsync(Guid roundId)
+    {
+        var round = await _unitOfWork.Rounds.ReadByIdAsync(roundId);
+
+        return round.WildColor;
+    }
+
+    public async Task RemoveTopCardWildColor(Guid roundId)
+    {
+        var round = await _unitOfWork.Rounds.ReadByIdAsync(roundId);
+        round.WildColor = null;
+
+        _unitOfWork.Rounds.Update(round);
+        await _unitOfWork.SaveAsync();
     }
 
     public async Task<IList<RoundCard>> GetCardsInRound(Guid roundId)
