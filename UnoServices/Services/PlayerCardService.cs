@@ -117,7 +117,39 @@ public class PlayerCardService : IPlayerCardService
 
         return score;
     }
-    
+
+    public async Task DeletePlayerCardsAsync(IEnumerable<Guid> playerIds)
+    {
+        foreach (var playerId in playerIds)
+        {
+            var playerCards = await _unitOfWork.PlayerCards.GetPlayerCards(playerId);
+
+            foreach (var card in playerCards)
+            {
+                await _unitOfWork.PlayerCards.RemovePlayerCard(card.Id, playerId);
+            }
+        }
+
+        await _unitOfWork.SaveAsync();
+    }
+
+    public async Task<IEnumerable<Guid>> GetCardsInPlayAsync(Guid? actionGameId)
+    {
+        var players = await _unitOfWork.Players.ReadAsync(
+            predicate: p => p.GameId == actionGameId,
+            noTracking:true);
+
+        IEnumerable<Guid> result = new List<Guid>();
+        foreach (var player in players)
+        {
+            var playerCards = (await _unitOfWork.PlayerCards.GetPlayerCards(player.Id)).Select(p => p.Id);
+
+            result = result.Union(playerCards);
+        }
+
+        return result;
+    }
+
     private int GetCardPoints(CardValue value)
     {
         return value switch

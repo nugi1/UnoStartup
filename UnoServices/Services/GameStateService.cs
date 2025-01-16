@@ -347,11 +347,18 @@ public class GameStateService : IGameStateService
             }
         }
 
-        if (player.UnoSaid && await _playerCardService.GetCardsQuantity(player.Id) == 0)
+        if (await _playerCardService.GetCardsQuantity(player.Id) == 0)
         {
             var score = await _playerCardService.AccumulateScoresAsync(gameId, player.Id);
             await _playerService.UpdatePlayerScoreAsync(player, score);
-            await NewRoundStarted(gameId);
+            if (score >= 500)
+            {
+                await DeclareWinner(player, gameId);
+            }
+            else
+            {
+                await NewRoundStarted(gameId);
+            }
         }
         
         try
@@ -370,13 +377,19 @@ public class GameStateService : IGameStateService
         return gameState;
     }
 
+    private async Task DeclareWinner(Player player, Guid? gameId)
+    {
+        await _gameService.WinGameAsync(player, gameId);
+    }
+
     private async Task NewRoundStarted(Guid? gameId)
     {
         var round = await _gameService.GetRound(gameId);
-        await _gameService.NewRoundStartedAsync(round);
-        await _roundService.FillTheCardsInPlayAsync(round.Id);
-
         var players = (await _playerService.GetPlayersBy(gameId ?? throw new InvalidOperationException())).ToList();
+        await _gameService.NewRoundStartedAsync(round);
+        await _playerCardService.DeletePlayerCardsAsync(players.Select(p => p.Id));
+        await _roundService.DeleteCardsInPlayAsync(round.Id);
+        await _roundService.FillTheCardsInPlayAsync(round.Id);
         
         var cardsInPlay = (await _roundService.GetCardsInRound(round.Id)).OrderBy(c => c.Position).Select(c => c.CardId).ToList();
         await _playerCardService.GiveCardsToPlayers(players, cardsInPlay, round.Id);
@@ -396,20 +409,42 @@ public class GameStateService : IGameStateService
     private async Task<GameState> DrawCard(PlayerAction action)
     {
         var transaction = await _unitOfWork.BeginTransactionAsync();
-
         var player = await _playerService.GetTurn(action.GameId);
+
+        if (action.ActionData != null)
+        {
+            var userName = DeserializeContent<string>(action.ActionData);
+            
+            if (player.Username != userName)
+            {
+                return await GetGameState(action.GameId ?? throw new NotImplementedException());
+            }
+        }
+        
         var round = await _gameService.GetRound(action.GameId);
         var quantity = await _gameService.GetPlayersQuantity(action.GameId);
         
         var cardsInPlay = await _roundService.GetCardsInRound(round.Id);
+        if (cardsInPlay.Count == 0)
+        {
+            var playerCardIds = await _playerCardService.GetCardsInPlayAsync(action.GameId);
+            await _roundService.ReshuffleDiscardPilesAsync(round.Id, playerCardIds);
+        }
         var drawnCard = cardsInPlay.First();
         await _playerCardService.GiveCardToPlayer(player.Id, drawnCard.CardId);
         await _roundService.RemoveCardInRoundAsync(round.Id, drawnCard.CardId);
 
-        await _playerService.ChangePlayerTurnAsync(player);
-        bool direction = await _gameService.GetDirection(action.GameId ?? throw new InvalidOperationException());
-        await _playerService.SetTurn(direction, action.GameId ?? throw new InvalidOperationException(), player.Position,
-            1, quantity);
+        if (!IsValidMove(round.TopCard, new PlayCardDto()
+            {
+                CardColor = drawnCard.Card.Color,
+                CardValue = drawnCard.Card.Value
+            }))
+        {
+            await _playerService.ChangePlayerTurnAsync(player);
+            bool direction = await _gameService.GetDirection(action.GameId ?? throw new InvalidOperationException());
+            await _playerService.SetTurn(direction, action.GameId ?? throw new InvalidOperationException(), player.Position,
+                1, quantity);
+        }
         
         try
         {
@@ -623,20 +658,20 @@ public class GameStateService : IGameStateService
             }
         }
         
-        /*
-        if (oldState.Game.Round == null || oldState.Game.Round.Played != newState.Game.Round.Played)
-            {
+        if (oldState.Game.Round == null || oldState.Game.Round.Number != newState.Game.Round.Number) 
+        {
                 changes.Add(new GameStateChange
                 {
                     Type = "NewRound",
                     Data = new GameRoundDto
                     {
                         GameId = newState.Game.Id,
-                        Round = newState.Game.Round.Played + 1
+                        Round = newState.Game.Round.Number + 1
                     }
-                });
-            }
+                }); 
+        }
 
+        /*
             if (newState.Game.WinnerName != null)
             {
                 changes.Add(new GameStateChange

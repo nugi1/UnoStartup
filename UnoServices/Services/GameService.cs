@@ -67,8 +67,17 @@ public class GameService : IGameService
     public async Task NewRoundStartedAsync(Round round)
     {
         round.Number += 1;
-
-        _unitOfWork.Rounds.Update(round);
         await _unitOfWork.SaveAsync();
+    }
+
+    public async Task WinGameAsync(Player player, Guid? gameId)
+    {
+        var game = await _unitOfWork.Games.ReadByIdAsync(gameId ?? throw new InvalidOperationException());
+
+        game.WinnerName = player.Username;
+        player.IsWinner = true;
+
+        _unitOfWork.Games.Update(game);
+        _unitOfWork.Players.Update(player);
     }
 }
