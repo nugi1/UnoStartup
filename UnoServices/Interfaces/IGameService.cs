@@ -12,4 +12,5 @@ public interface IGameService
     Task<bool> ChangeDirection(Guid gameId);
     Task NewRoundStartedAsync(Round round);
     Task WinGameAsync(Player player, Guid? gameId);
+    Task<int> GetRequestedQuantity(Guid? gameId);
 }

@@ -20,6 +20,14 @@ public class GameService : IGameService
         return quantity;
     }
 
+    public async Task<int> GetRequestedQuantity(Guid? gameId)
+    {
+        var result = (await _unitOfWork.Games.ReadByIdAsync(gameId)).PlayerQuantity;
+
+        return result;
+    }
+
+
     public async Task UpdateRoundId(Guid gameId, Guid roundId)
     {
         var game = await _unitOfWork.Games.ReadByIdAsync(gameId);

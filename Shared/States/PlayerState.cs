@@ -8,7 +8,7 @@ public class PlayerState
 
     public int Score { get; set; } = 0;
 
-    public IList<CardDto> Cards { get; set; } = new List<CardDto>();
+    public IList<CardDto>? Cards { get; set; } = new List<CardDto>();
 
     public bool UnoSaid { get; set; }
 
