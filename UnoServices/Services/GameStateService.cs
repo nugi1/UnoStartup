@@ -109,22 +109,25 @@ public class GameStateService : IGameStateService
                             .Include(g => g.Players)
 
         ) ?? throw new InvalidOperationException();
-
+        
         IList<PlayerHand> playerHands = new List<PlayerHand>();
-        foreach (var player in game.Players)
+        if (game.RoundId != null)
         {
-            var cards = await _unitOfWork.PlayerCards.GetPlayerCards(player.Id);
-
-            var playerCards = new PlayerHand()
+            foreach (var player in game.Players)
             {
-                PlayerId = player.Id,
-                Cards = cards.Select(c => new CardDto()
+                var cards = await _unitOfWork.PlayerCards.GetPlayerCards(player.Id);
+
+                var playerCards = new PlayerHand()
                 {
-                    Color = c.Color,
-                    Value = c.Value
-                }).ToList()
-            };
-            playerHands.Add(playerCards);
+                    PlayerId = player.Id,
+                    Cards = cards.Select(c => new CardDto()
+                    {
+                        Color = c.Color,
+                        Value = c.Value
+                    }).ToList()
+                };
+                playerHands.Add(playerCards);
+            }   
         }
 
         var result = new GameState()
@@ -225,7 +228,7 @@ public class GameStateService : IGameStateService
         await _playerService.AddPlayerAsync(player);
 
         var players = (await _playerService.GetPlayersBy(gameId)).ToList();
-        var playersQuantity = await _gameService.GetPlayersQuantity(gameId);
+        var playersQuantity = await _gameService.GetRequestedQuantity(gameId);
         
         if (players.Count() == playersQuantity)
         {
@@ -265,14 +268,9 @@ public class GameStateService : IGameStateService
         return value == CardValue.Wild || value == CardValue.WildDrawFour;
     }
 
-    private bool IsValidMove(Card topCard, PlayCardDto playedCard, CardColor? wildColor = null)
+    private bool IsValidMove(Card topCard, PlayCardDto playedCard)
     {
         if (playedCard.CardValue == CardValue.Wild || playedCard.CardValue == CardValue.WildDrawFour)
-        {
-            return true;
-        }
-
-        if (wildColor != null && playedCard.CardColor == wildColor)
         {
             return true;
         }
@@ -310,18 +308,11 @@ public class GameStateService : IGameStateService
         var quantity = await _gameService.GetPlayersQuantity(gameId);
         
         var transaction = await _unitOfWork.BeginTransactionAsync();
-
-        CardColor? wildColor = null;
-        if (playedCard.CardValue == CardValue.Wild)
-        {
-            await _roundService.PlayedWildCardAsync(round.Id, playedCard);
-        }
-
-        wildColor = await _roundService.CheckForWildTopCardAsync(round.Id);
+        
         var card = await _unitOfWork.Cards.ReadOneAsync(
             predicate: c => c.Color == playedCard.CardColor && c.Value == playedCard.CardValue && c.Id != topCard.Id, noTracking: true);
         
-        if (IsValidMove(topCard, playedCard, wildColor))
+        if (IsValidMove(topCard, playedCard))
         {
             await _roundService.UpdateRoundTopCardAsync(round.Id, card);
             
@@ -347,23 +338,10 @@ public class GameStateService : IGameStateService
                 nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
                     player.Position, 2, quantity);
             }
-            else if (card.Value == CardValue.WildDrawFour)
-            {
-                var p = await _playerService.GetNextPlayer(direction, player.Position, gameId, quantity);
-                await _playerCardService.GivePlayerTwoCards(p.Id, round.Id);
-                await _playerCardService.GivePlayerTwoCards(p.Id, round.Id);
-                nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
-                    player.Position, 2, quantity);
-            }
             else
             {
                 nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
                     player.Position, 1, quantity);
-            }
-
-            if (playedCard.CardValue != CardValue.Wild || playedCard.CardValue != CardValue.WildDrawFour)
-            {
-                await _roundService.RemoveTopCardWildColor(round.Id);
             }
 
             if (nextPlayer != null)
@@ -614,13 +592,13 @@ public class GameStateService : IGameStateService
                     Score = p.Score,
                     Username = p.Username,
                     UnoSaid = p.UnoSaid,
-                    Cards = newState.PlayerHands.First(ph => ph.PlayerId == p.Id).Cards,
+                    Cards = newState.PlayerHands.FirstOrDefault(ph => ph.PlayerId == p.Id)?.Cards,
                     GameId = newState.Game.Id,
                 }).ToList()
             });
         }
 
-        if (oldState.Game.Round == null || oldState.Game.Round.TopCard != newState.Game.Round.TopCard)
+        if ((oldState.Game.RoundId == null && newState.Game.RoundId != null) || (oldState.Game.RoundId != null && oldState.Game.Round.TopCard != newState.Game.Round.TopCard))
         {
             changes.Add(new GameStateChange
             {
@@ -641,7 +619,9 @@ public class GameStateService : IGameStateService
         {
             var player = oldState.Game.Players.FirstOrDefault(p => p.Id == newPlayerState.Id);
 
-            if (player == null || !newState.PlayerHands.First(ph => ph.PlayerId == newPlayerState.Id).Cards.Equals(oldState.PlayerHands.First(ph => ph.PlayerId == player.Id).Cards))
+            var oldHand = oldState.PlayerHands.FirstOrDefault(ph => ph.PlayerId == player.Id);
+            var hand = newState.PlayerHands.FirstOrDefault(ph => ph.PlayerId == newPlayerState.Id);
+            if ((oldHand == null && hand != null) || (hand != null && oldHand != null && hand.Cards.Equals(oldHand.Cards)))
             {
                 changes.Add(new GameStateChange
                 {
@@ -683,7 +663,7 @@ public class GameStateService : IGameStateService
             }
         }
         
-        if (oldState.Game.Round == null || oldState.Game.Round.Number != newState.Game.Round.Number) 
+        if ((oldState.Game.Round == null && newState.Game.Round != null) || (oldState.Game.Round != null && oldState.Game.Round.Number != newState.Game.Round.Number)) 
         {
                 changes.Add(new GameStateChange
                 {

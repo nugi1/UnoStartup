@@ -1,5 +1,4 @@
 ﻿using System.Text.Json.Serialization;
-using Shared.Enums;
 
 namespace UnoAccess.Entities;
 
@@ -10,8 +9,6 @@ public class Round : Base
     public Guid? TopCardId { get; set; }
 
     public Card? TopCard { get; set; }
-    
-    public CardColor? WildColor { get; set; }
 
     public Guid GameId { get; set; }
 

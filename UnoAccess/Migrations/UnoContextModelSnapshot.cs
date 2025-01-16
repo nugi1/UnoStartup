@@ -801,9 +801,6 @@ namespace UnoAccess.Migrations
                     b.Property<Guid?>("TopCardId")
                         .HasColumnType("uuid");
 
-                    b.Property<int?>("WildColor")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
                     b.HasIndex("GameId")
