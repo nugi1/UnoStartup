@@ -621,7 +621,7 @@ public class GameStateService : IGameStateService
 
             var oldHand = oldState.PlayerHands.FirstOrDefault(ph => ph.PlayerId == player.Id);
             var hand = newState.PlayerHands.FirstOrDefault(ph => ph.PlayerId == newPlayerState.Id);
-            if ((oldHand == null && hand != null) || (hand != null && oldHand != null && hand.Cards.Equals(oldHand.Cards)))
+            if ((oldHand == null && hand != null) || (hand != null && oldHand != null && !hand.Cards.Equals(oldHand.Cards)))
             {
                 changes.Add(new GameStateChange
                 {
