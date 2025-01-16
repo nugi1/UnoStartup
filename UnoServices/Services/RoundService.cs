@@ -79,6 +79,35 @@ public class RoundService : IRoundService
         return newRoundCards.OrderBy(n => n.Position).Select(n => n.Card).First();
     }
 
+    public async Task DeleteCardsInPlayAsync(Guid roundId)
+    {
+        var cardsInPlay = await _unitOfWork.RoundCards.ReadAsync(
+            predicate: rc => rc.RoundId == roundId);
+
+        foreach (var cards in cardsInPlay)
+        {
+            await _unitOfWork.RoundCards.DeleteBy(cards.RoundId, cards.CardId);
+        }
+
+        await _unitOfWork.SaveAsync();
+    }
+
+    public async Task ReshuffleDiscardPilesAsync(Guid roundId, IEnumerable<Guid> playerCardIds)
+    {
+        var cards = await _unitOfWork.Cards.ReadAsync();
+        var roundCards = ShuffleCards(cards, roundId);
+
+        foreach (var card in roundCards)
+        {
+            if (!playerCardIds.Contains(card.CardId))
+            {
+                await _unitOfWork.RoundCards.CreateAsync(card);
+            }
+        }
+
+        await _unitOfWork.SaveAsync();    
+    }
+
     public async Task<IList<RoundCard>> GetCardsInRound(Guid roundId)
     {
         var round = await _unitOfWork.RoundCards.ReadAsync(

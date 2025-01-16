@@ -9,5 +9,7 @@ public interface IRoundService
     Task FillTheCardsInPlayAsync(Guid roundId);
     Task<IList<RoundCard>> GetCardsInRound(Guid roundId);
     Task CreateRound(Round round);
-    Task<Card> ShuffleUntilTopCardAsync(Guid roundId); 
+    Task<Card> ShuffleUntilTopCardAsync(Guid roundId);
+    Task DeleteCardsInPlayAsync(Guid roundId);
+    Task ReshuffleDiscardPilesAsync(Guid roundId, IEnumerable<Guid> playerCardIds);
 }
