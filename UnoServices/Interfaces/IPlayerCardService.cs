@@ -16,4 +16,5 @@ public interface IPlayerCardService
     Task<int> AccumulateScoresAsync(Guid? gameId, Guid playerId);
     Task DeletePlayerCardsAsync(IEnumerable<Guid> playerIds);
     Task<IEnumerable<Guid>> GetCardsInPlayAsync(Guid? actionGameId);
+    Task<Card> GetCardFromPlayersHand(Guid id, PlayCardDto playedCard);
 }

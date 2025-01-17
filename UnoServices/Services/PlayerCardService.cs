@@ -17,7 +17,7 @@ public class PlayerCardService : IPlayerCardService
     public async Task RemovePlayerCardAsync(Guid playerId, PlayCardDto playedCard)
     {
         var card = (await _unitOfWork.PlayerCards.GetPlayerCards(playerId)).First(
-            pc => pc.Color == playedCard.CardColor && pc.Value == playedCard.CardValue);
+            pc => (pc.Color == playedCard.CardColor && pc.Value == playedCard.CardValue) || (playedCard.CardValue == CardValue.Wild && pc.Value == CardValue.Wild) || (playedCard.CardValue == CardValue.WildDrawFour && pc.Value == CardValue.WildDrawFour));
 
         await _unitOfWork.PlayerCards.RemovePlayerCard(card.Id, playerId);
         await _unitOfWork.SaveAsync();
@@ -171,5 +171,19 @@ public class PlayerCardService : IPlayerCardService
             CardValue.WildDrawFour => 50,
             _ => throw new ArgumentOutOfRangeException(nameof(value), $"Unknown card value: {value}")
         };
+    }
+
+    public async Task<Card> GetCardFromPlayersHand(Guid id, PlayCardDto playedCard)
+    {
+        var pc = await _unitOfWork.PlayerCards.ReadOneAsync(
+            predicate: pc => pc.PlayerId == id && 
+            (
+            (pc.Card.Color == playedCard.CardColor && pc.Card.Value == playedCard.CardValue) || 
+            (playedCard.CardValue == CardValue.Wild && pc.Card.Value == CardValue.Wild) || (playedCard.CardValue == CardValue.WildDrawFour && pc.Card.Value == CardValue.WildDrawFour)
+            ),
+            include: pc => pc.Include(c => c.Card),
+            noTracking: true);
+
+        return pc.Card;
     }
 }

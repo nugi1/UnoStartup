@@ -109,6 +109,11 @@ public class GameStateService : IGameStateService
                             .Include(g => g.Players)
 
         ) ?? throw new InvalidOperationException();
+
+        if (game.Round != null && game.Round.WildColor != null)
+        {
+            game.Round.TopCard.Color = game.Round.WildColor ?? throw new InvalidOperationException();
+        }
         
         IList<PlayerHand> playerHands = new List<PlayerHand>();
         if (game.RoundId != null)
@@ -268,12 +273,18 @@ public class GameStateService : IGameStateService
         return value == CardValue.Wild || value == CardValue.WildDrawFour;
     }
 
-    private bool IsValidMove(Card topCard, PlayCardDto playedCard)
+    private bool IsValidMove(Card topCard, PlayCardDto playedCard, CardColor? wildColor = null)
     {
         if (playedCard.CardValue == CardValue.Wild || playedCard.CardValue == CardValue.WildDrawFour)
         {
             return true;
         }
+
+        if (wildColor != null && playedCard.CardColor == wildColor)
+        {
+            return true;
+        }
+
 
         if (playedCard.CardColor == topCard.Color || playedCard.CardValue == topCard.Value)
         {
@@ -289,30 +300,37 @@ public class GameStateService : IGameStateService
 
         return false;
     }
-    
+
     private async Task<GameState> PlayCard(PlayerAction action)
     {
         if (action.ActionData == null)
         {
             throw new NotImplementedException();
         }
-        
+
         // Inputs of play card
         var playedCard = DeserializeContent<PlayCardDto>(action.ActionData);
         var gameId = action.GameId;
-        
+
         var round = await _gameService.GetRound(gameId);
         var topCard = round.TopCard;
 
         var player = await _playerService.GetTurn(gameId);
         var quantity = await _gameService.GetPlayersQuantity(gameId);
-        
+
         var transaction = await _unitOfWork.BeginTransactionAsync();
+
+
+        CardColor? wildColor = null;
+        if (playedCard.CardValue == CardValue.Wild || playedCard.CardValue == CardValue.WildDrawFour)
+        {
+            await _roundService.PlayedWildCardAsync(round.Id, playedCard);
+        }
+        wildColor = await _roundService.CheckForWildTopCardAsync(round.Id);
+
+        var card = await _playerCardService.GetCardFromPlayersHand(player.Id, playedCard);
         
-        var card = await _unitOfWork.Cards.ReadOneAsync(
-            predicate: c => c.Color == playedCard.CardColor && c.Value == playedCard.CardValue && c.Id != topCard.Id, noTracking: true);
-        
-        if (IsValidMove(topCard, playedCard))
+        if (IsValidMove(topCard, playedCard, wildColor))
         {
             await _roundService.UpdateRoundTopCardAsync(round.Id, card);
             
@@ -338,11 +356,25 @@ public class GameStateService : IGameStateService
                 nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
                     player.Position, 2, quantity);
             }
+            else if (card.Value == CardValue.WildDrawFour)
+            {
+                var p = await _playerService.GetNextPlayer(direction, player.Position, gameId, quantity);
+                await _playerCardService.GivePlayerTwoCards(p.Id, round.Id);
+                await _playerCardService.GivePlayerTwoCards(p.Id, round.Id);
+                nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
+                    player.Position, 2, quantity);
+            }
             else
             {
                 nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
                     player.Position, 1, quantity);
             }
+
+            if (playedCard.CardValue != CardValue.Wild && playedCard.CardValue != CardValue.WildDrawFour)
+            {
+                await _roundService.RemoveTopCardWildColor(round.Id);
+            }
+
 
             if (nextPlayer != null)
             {
