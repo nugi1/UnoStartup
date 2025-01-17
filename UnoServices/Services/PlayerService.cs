@@ -34,7 +34,8 @@ public class PlayerService : IPlayerService
     public async Task<int> GetHighestPosition(Guid gameId)
     {
         var position = (await _unitOfWork.Players.ReadAsync(
-            predicate: p => p.GameId == gameId)).OrderByDescending(p => p.Position).First().Position;
+            predicate: p => p.GameId == gameId,
+            noTracking:true)).OrderByDescending(p => p.Position).First().Position;
 
         return position;
     }
@@ -78,7 +79,8 @@ public class PlayerService : IPlayerService
     public async Task ReversePositions(Guid? gameId)
     {
         var players = await _unitOfWork.Players.ReadAsync(
-            predicate: p => p.GameId == gameId);
+            predicate: p => p.GameId == gameId,
+            noTracking:true);
 
         foreach (var player in players)
         {
@@ -92,7 +94,7 @@ public class PlayerService : IPlayerService
 
     public async Task UpdatePlayerScoreAsync(Player player, int score)
     {
-        player.Score = score;
+        player.Score += score;
 
         _unitOfWork.Players.Update(player);
         await _unitOfWork.SaveAsync();
@@ -118,9 +120,14 @@ public class PlayerService : IPlayerService
         var player = await _unitOfWork.Players.ReadOneAsync(
             predicate: p => p.Position == calculatedPosition % quantity && p.GameId == gameId && p.IsTurn == false,
             noTracking: true);
-
+        
         if (player != null)
         {
+            var trackedEntity = _unitOfWork.Players.GetTrackedEntity(player.Id);
+            if (trackedEntity != null)
+            {
+                _unitOfWork.Players.DetachEntity(trackedEntity);
+            }
             player.IsTurn = true;
             _unitOfWork.Players.Update(player);
         }

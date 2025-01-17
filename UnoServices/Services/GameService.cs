@@ -15,7 +15,7 @@ public class GameService : IGameService
 
     public async Task<int> GetPlayersQuantity(Guid? gameId)
     {
-        var quantity = (await _unitOfWork.Players.ReadAsync(g => g.GameId == gameId)).Count();
+        var quantity = (await _unitOfWork.Players.ReadAsync(g => g.GameId == gameId, noTracking:true)).Count();
 
         return quantity;
     }
@@ -41,7 +41,8 @@ public class GameService : IGameService
     {
         var game = await _unitOfWork.Games.ReadOneAsync(
             predicate: g => g.Id == gameId,
-            include: g => g.Include(e => e.Round).ThenInclude(r => r.TopCard));
+            include: g => g.Include(e => e.Round).ThenInclude(r => r.TopCard),
+            noTracking:true);
 
         return game.Round;
     }

@@ -11,10 +11,29 @@ public class GenericRepository<T> : IGenericRepository<T>
     where T : class
 {
     public DbSet<T> DbSet { get; set; }
+    private readonly UnoContext _context;
 
     public GenericRepository(UnoContext context)
     {
         DbSet = context.Set<T>();
+        _context = context;
+    }
+    
+    public T? GetTrackedEntity(object primaryKey)
+    {
+        return _context.ChangeTracker.Entries<T>()
+            .FirstOrDefault(e => e.Entity != null && e.Property("Id").CurrentValue.Equals(primaryKey))
+            ?.Entity;
+    }
+
+    // Detach an entity from the change tracker
+    public void DetachEntity(T entity)
+    {
+        var entry = _context.Entry(entity);
+        if (entry != null)
+        {
+            entry.State = EntityState.Detached;
+        }
     }
     public async Task<T> CreateAsync(T entity)
     {

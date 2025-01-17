@@ -26,4 +26,6 @@ public interface IGenericRepository<T>
     void Update(T entity);
     Task DeleteAsync(object Id);
     Task<bool> ExistsAsync(Expression<Func<T, bool>> condition);
+    T? GetTrackedEntity(object primaryKey);
+    void DetachEntity(T entity);
 }

@@ -56,7 +56,8 @@ public class PlayerCardService : IPlayerCardService
     public async Task<bool> CardExistsForPlayer(Guid playerId, Guid cardId)
     {
         var exists = await _unitOfWork.PlayerCards.ReadOneAsync(
-            predicate: p => p.PlayerId == playerId && p.CardId == cardId);
+            predicate: p => p.PlayerId == playerId && p.CardId == cardId,
+            noTracking:true);
 
         return exists != null;
     }
@@ -75,7 +76,8 @@ public class PlayerCardService : IPlayerCardService
     public async Task GivePlayerTwoCards(Guid playerId, Guid roundId)
     {
         var cardsInPlay = await _unitOfWork.RoundCards.ReadAsync(
-            predicate: c => c.RoundId == roundId);
+            predicate: c => c.RoundId == roundId,
+            noTracking:true);
 
         var cardsToGive = cardsInPlay.OrderBy(cp => cp.Position).Take(2);
 
@@ -103,7 +105,8 @@ public class PlayerCardService : IPlayerCardService
     public async Task<int> AccumulateScoresAsync(Guid? gameId, Guid playerId)
     {
         var players = await _unitOfWork.Players.ReadAsync(
-            p => p.GameId == gameId && p.Id != playerId);
+            p => p.GameId == gameId && p.Id != playerId,
+            noTracking:true);
 
         int score = 0;
         foreach (var player in players)
