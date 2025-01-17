@@ -4,9 +4,4 @@ using UnoAccess.Interfaces;
 
 namespace UnoAccess.Repositories;
 
-public class GameRepository : GenericRepository<Game>, IGameRepository
-{
-    public GameRepository(UnoContext context) : base(context)
-    {
-    }
-}
+public class GameRepository(UnoContext context) : GenericRepository<Game>(context), IGameRepository;

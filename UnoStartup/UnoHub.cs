@@ -23,13 +23,8 @@ namespace UnoStartup
         // TODO: When round cards run out and player can not draw card to make move, renew the deck
         public async Task<GameStateDto> UpdateGameState(PlayerAction action)
         {
-            GameState? oldState = null;
-            if (action.GameId != null)
-            {
-                oldState = await _gameStateService.GetGameState(action.GameId ?? throw new NotImplementedException());
-            }
-
             action.ConnectionId = Context.ConnectionId;
+            var oldState = await _gameStateService.GetGameState(action.GameId);
             var newState = await _gameStateService.UpdateGameState(action);
 
             var changes = _gameStateService.GetGameStateChanges(oldState, newState);

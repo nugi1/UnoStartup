@@ -18,10 +18,6 @@ public interface IUnitOfWork : IDisposable
     IPlayerCardRepository PlayerCards { get; }
 
     Task<int> SaveAsync();
-
-    Task<int> SaveAsync(bool logChanges);
-
+    
     Task<IDbContextTransaction> BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted);
-
-    void Detach<TEntity>(TEntity entity);
 }

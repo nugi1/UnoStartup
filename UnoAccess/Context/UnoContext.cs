@@ -4,7 +4,7 @@ using UnoAccess.PredefinedData;
 
 namespace UnoAccess.Context;
 
-public class UnoContext : DbContext
+public class UnoContext(DbContextOptions<UnoContext> options) : DbContext(options)
 {
     public DbSet<Game> Games { get; set; }
     public DbSet<Round> Rounds { get; set; }
@@ -12,11 +12,6 @@ public class UnoContext : DbContext
     public DbSet<Card> Cards { get; set; }
     public DbSet<RoundCard> RoundCards { get; set; }
     public DbSet<PlayerCard> PlayerCards { get; set; }
-
-    public UnoContext(DbContextOptions<UnoContext> options) : base(options)
-    {
-
-    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,23 +21,31 @@ public class UnoContext : DbContext
         {
             e.HasKey(g => g.Id);
 
-            e.HasOne(g => g.Round).WithOne(r => r.Game).HasForeignKey<Game>(g => g.RoundId);
+            e.HasOne(g => g.Round)
+                .WithOne(r => r.Game)
+                .HasForeignKey<Game>(g => g.RoundId);
         });
 
         modelBuilder.Entity<Round>(e =>
         {
             e.HasKey(r => r.Id);
 
-            e.HasOne(r => r.Game).WithOne(g => g.Round).HasForeignKey<Round>(r => r.GameId);
+            e.HasOne(r => r.Game)
+                .WithOne(g => g.Round)
+                .HasForeignKey<Round>(r => r.GameId);
 
-            e.HasOne(r => r.TopCard).WithMany().HasForeignKey(r => r.TopCardId);
+            e.HasOne(r => r.TopCard)
+                .WithMany()
+                .HasForeignKey(r => r.TopCardId);
         });
 
         modelBuilder.Entity<Player>(e =>
         {
             e.HasKey(p => p.Id);
 
-            e.HasOne(p => p.Game).WithMany(g => g.Players).HasForeignKey(p => p.GameId);
+            e.HasOne(p => p.Game)
+                .WithMany(g => g.Players)
+                .HasForeignKey(p => p.GameId);
         });
 
         modelBuilder.Entity<Card>(e =>
@@ -56,16 +59,22 @@ public class UnoContext : DbContext
         {
             e.HasKey(c => new { c.RoundId, c.CardId });
 
-            e.HasOne(rc => rc.Round).WithMany(r => r.CardsInPlay).HasForeignKey(rc => rc.RoundId);
+            e.HasOne(rc => rc.Round)
+                .WithMany(r => r.CardsInPlay)
+                .HasForeignKey(rc => rc.RoundId);
         });
 
         modelBuilder.Entity<PlayerCard>(e =>
         {
-            e.HasKey(c => new { c.CardId, c.PlayerId });
+            e.HasKey(pc => new { pc.CardId, pc.PlayerId });
 
-            e.HasOne<Card>(e => e.Card).WithMany().HasForeignKey(e => e.CardId);
+            e.HasOne<Card>(pc => pc.Card)
+                .WithMany()
+                .HasForeignKey(pc => pc.CardId);
 
-            e.HasOne<Player>(e => e.Player).WithMany().HasForeignKey(e => e.PlayerId);
+            e.HasOne<Player>(pc => pc.Player)
+                .WithMany()
+                .HasForeignKey(pc => pc.PlayerId);
         });
     }
 
