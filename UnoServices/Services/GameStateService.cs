@@ -109,6 +109,11 @@ public class GameStateService : IGameStateService
                             .Include(g => g.Players)
 
         ) ?? throw new InvalidOperationException();
+
+        if (game.Round != null && game.Round.WildColor != null)
+        {
+            game.Round.TopCard.Color = game.Round.WildColor ?? throw new InvalidOperationException();
+        }
         
         IList<PlayerHand> playerHands = new List<PlayerHand>();
         if (game.RoundId != null)
@@ -280,6 +285,7 @@ public class GameStateService : IGameStateService
             return true;
         }
 
+
         if (playedCard.CardColor == topCard.Color || playedCard.CardValue == topCard.Value)
         {
             return true;
@@ -294,35 +300,35 @@ public class GameStateService : IGameStateService
 
         return false;
     }
-    
+
     private async Task<GameState> PlayCard(PlayerAction action)
     {
         if (action.ActionData == null)
         {
             throw new NotImplementedException();
         }
-        
+
         // Inputs of play card
         var playedCard = DeserializeContent<PlayCardDto>(action.ActionData);
         var gameId = action.GameId;
-        
+
         var round = await _gameService.GetRound(gameId);
         var topCard = round.TopCard;
 
         var player = await _playerService.GetTurn(gameId);
         var quantity = await _gameService.GetPlayersQuantity(gameId);
-        
+
         var transaction = await _unitOfWork.BeginTransactionAsync();
 
+
         CardColor? wildColor = null;
-        if (playedCard.CardValue == CardValue.Wild)
+        if (playedCard.CardValue == CardValue.Wild || playedCard.CardValue == CardValue.WildDrawFour)
         {
             await _roundService.PlayedWildCardAsync(round.Id, playedCard);
         }
         wildColor = await _roundService.CheckForWildTopCardAsync(round.Id);
 
-        var card = await _unitOfWork.Cards.ReadOneAsync(
-            predicate: c => c.Color == playedCard.CardColor && c.Value == playedCard.CardValue && c.Id != topCard.Id, noTracking: true);
+        var card = await _playerCardService.GetCardFromPlayersHand(player.Id, playedCard);
         
         if (IsValidMove(topCard, playedCard, wildColor))
         {
@@ -364,10 +370,11 @@ public class GameStateService : IGameStateService
                     player.Position, 1, quantity);
             }
 
-            if (playedCard.CardValue != CardValue.Wild || playedCard.CardValue != CardValue.WildDrawFour)
+            if (playedCard.CardValue != CardValue.Wild && playedCard.CardValue != CardValue.WildDrawFour)
             {
                 await _roundService.RemoveTopCardWildColor(round.Id);
             }
+
 
             if (nextPlayer != null)
             {

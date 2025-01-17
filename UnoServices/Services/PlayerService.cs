@@ -25,7 +25,8 @@ public class PlayerService : IPlayerService
     public async Task<IEnumerable<Player>> GetPlayersBy(Guid gameId)
     {
         var players = await _unitOfWork.Players.ReadAsync(
-            predicate: p => p.GameId == gameId);
+            predicate: p => p.GameId == gameId,
+            noTracking: true);
 
         return players;
     }

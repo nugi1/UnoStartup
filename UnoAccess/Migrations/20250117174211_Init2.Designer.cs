@@ -12,8 +12,8 @@ using UnoAccess.Context;
 namespace UnoAccess.Migrations
 {
     [DbContext(typeof(UnoContext))]
-    [Migration("20250117173712_Init1")]
-    partial class Init1
+    [Migration("20250117174211_Init2")]
+    partial class Init2
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
