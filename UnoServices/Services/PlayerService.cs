@@ -116,7 +116,8 @@ public class PlayerService : IPlayerService
         var calculatedPosition = ((currentPosition + steps) % quantity + quantity) % quantity;
         
         var player = await _unitOfWork.Players.ReadOneAsync(
-            predicate: p => p.Position == calculatedPosition % quantity && p.GameId == gameId && p.IsTurn == false);
+            predicate: p => p.Position == calculatedPosition % quantity && p.GameId == gameId && p.IsTurn == false,
+            noTracking: true);
 
         if (player != null)
         {
