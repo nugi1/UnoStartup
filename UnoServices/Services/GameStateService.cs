@@ -44,6 +44,11 @@ public class GameStateService : IGameStateService
             },
             new()
             {
+                ActionName = "ChallengeUnoDeclaration",
+                Action = ChallengeUnoDeclaration
+            },
+            new()
+            {
                 ActionName = "PlayCard",
                 Action = PlayCard
             },
@@ -370,7 +375,14 @@ public class GameStateService : IGameStateService
             }
         }
 
-        if (await _playerCardService.GetCardsQuantity(player.Id) == 0)
+        var cardsQuantity = await _playerCardService.GetCardsQuantity(player.Id);
+
+        if (cardsQuantity == 1)
+        {
+            await _playerService.SayUnoUntil(player);
+        }
+
+        if (cardsQuantity == 0)
         {
             var score = await _playerCardService.AccumulateScoresAsync(gameId, player.Id);
             await _playerService.UpdatePlayerScoreAsync(player, score);
@@ -398,6 +410,25 @@ public class GameStateService : IGameStateService
         var gameState = await GetGameState(gameId);
 
         return gameState;
+    }
+
+    private async Task<GameState> ChallengeUnoDeclaration(PlayerAction action)
+    {
+        var players = await _playerService.GetPlayersBy(action.GameId);
+        var round = await _gameService.GetRound(action.GameId);
+        foreach (var player in players)
+        {
+            var quantity = await _playerCardService.GetCardsQuantity(player.Id);
+
+            if (quantity == 1 && player.SayUnoUntil > DateTime.Now && !player.UnoSaid)
+            {
+                await _playerCardService.GivePlayerTwoCards(player.Id, round.Id);
+            }
+        }
+
+        var state = await GetGameState(action.GameId);
+
+        return state;
     }
 
     private async Task DeclareWinner(Player player, Guid gameId)
@@ -443,9 +474,23 @@ public class GameStateService : IGameStateService
                 return await GetGameState(action.GameId);
             }
         }
+
+        var cards = await _playerCardService.GetPlayerCards(player.Id);
         
         var round = await _gameService.GetRound(action.GameId);
         var quantity = await _gameService.GetPlayersQuantity(action.GameId);
+        
+        foreach (var card in cards)
+        {
+            if (IsValidMove(round.TopCard, new PlayCardDto()
+                {
+                    CardColor = card.Color,
+                    CardValue = card.Value
+                }))
+            {
+                return await GetGameState(action.GameId);
+            }
+        }
         
         var cardsInPlay = await _roundService.GetCardsInRound(round.Id);
         if (cardsInPlay.Count == 0)
@@ -453,6 +498,7 @@ public class GameStateService : IGameStateService
             var playerCardIds = await _playerCardService.GetCardsInPlayAsync(action.GameId);
             await _roundService.ReshuffleDiscardPilesAsync(round.Id, playerCardIds);
         }
+        
         var drawnCard = cardsInPlay.First();
         await _playerCardService.GiveCardToPlayer(player.Id, drawnCard.CardId);
         await _roundService.RemoveCardInRoundAsync(round.Id, drawnCard.CardId);
@@ -653,7 +699,8 @@ public class GameStateService : IGameStateService
                         GameId = newState.Game.Id,
                         Cards = newState.PlayerHands.First(ph => ph.PlayerId == newPlayerState.Id).Cards,
                         ConnectionId = newPlayerState.ConnectionId,
-                        Username = newPlayerState.Username
+                        Username = newPlayerState.Username,
+                        ConnectionIds = newState.Game.Players.Select(p => p.ConnectionId).ToList()
                     }
                 });
             }

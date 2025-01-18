@@ -17,4 +17,5 @@ public interface IPlayerCardService
     Task DeletePlayerCardsAsync(IEnumerable<Guid> playerIds);
     Task<IEnumerable<Guid>> GetCardsInPlayAsync(Guid? actionGameId);
     Task<Card> GetCardFromPlayersHand(Guid id, PlayCardDto playedCard);
+    Task<IEnumerable<Card>> GetPlayerCards(Guid playerId);
 }

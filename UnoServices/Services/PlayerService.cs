@@ -101,6 +101,14 @@ public class PlayerService(IUnitOfWork unitOfWork) : IPlayerService
         await unitOfWork.SaveAsync();
     }
 
+    public async Task SayUnoUntil(Player player)
+    {
+        player.SayUnoUntil = DateTime.Now.AddSeconds(5);
+        
+        unitOfWork.Players.Update(player);
+        await unitOfWork.SaveAsync();
+    }
+
     public async Task<Player?> SetTurn(bool direction, Guid gameId, int currentPosition, int steps, int quantity)
     {
         if (!direction)
