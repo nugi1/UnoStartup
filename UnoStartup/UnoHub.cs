@@ -70,7 +70,13 @@ namespace UnoStartup
 
                         foreach (var player in players)
                         {
-                            await Clients.Client(player.ConnectionId).SendAsync("GamePlayersChanged", players.Where(p => p.ConnectionId != player.ConnectionId), player);
+                            await Clients.Client(player.ConnectionId).SendAsync("GamePlayersChanged", players.Where(p => p.ConnectionId != player.ConnectionId).Select(p => new
+                            {
+                                Username = p.Username,
+                                Position = p.Poisition,
+                                Score = p.Score,
+                                GameId = p.GameId,
+                            }), player);
                         }
 
                         break;
