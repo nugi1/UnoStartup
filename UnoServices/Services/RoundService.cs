@@ -65,6 +65,11 @@ public class RoundService(IUnitOfWork unitOfWork) : IRoundService
         
         foreach (var card in newRoundCards)
         {
+            var entity = unitOfWork.RoundCards.GetTrackedEntity(card.RoundId, card.CardId);
+            if (entity != null)
+            {
+                unitOfWork.RoundCards.DetachEntity(entity);
+            }
             unitOfWork.RoundCards.Update(card);
         }
 

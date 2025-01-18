@@ -83,10 +83,12 @@ namespace UnoStartup
                     case "PlayerCardsChanged":
                         var cards = change.Data as GamePlayerCards;
                         await Clients.Client(cards.ConnectionId).SendAsync("NewPlayerCards", cards.Cards);
+                        await Clients.Group(gameId.ToString()).SendAsync("PlayerCards", cards.Username, cards.Cards.Count);
                         break;
                     case "PlayerScoreChanged":
                         var playerScore = change.Data as GameScoreDto;
                         await Clients.Client(playerScore.ConnectionId).SendAsync("NewPlayerScore", playerScore.Score);
+                        await Clients.Group(gameId.ToString()).SendAsync("PlayerScores", playerScore);
                         break;
                     case "ChangedTurn":
                         var playerTurn = change.Data as GameTurnDto;

@@ -593,7 +593,8 @@ public class GameStateService : IGameStateService
                     Players = newState.Game.Players.Select(p => new PlayerState
                     {
                         Username = p.Username,
-                        GameId = newState.Game.Id
+                        GameId = newState.Game.Id,
+                        Poisition = p.Position
                     }).ToList()
                 }
             });
@@ -614,6 +615,7 @@ public class GameStateService : IGameStateService
                     UnoSaid = p.UnoSaid,
                     Cards = newState.PlayerHands.FirstOrDefault(ph => ph.PlayerId == p.Id)?.Cards,
                     GameId = newState.Game.Id,
+                    Poisition = p.Position
                 }).ToList()
             });
         }
@@ -650,7 +652,8 @@ public class GameStateService : IGameStateService
                     {
                         GameId = newState.Game.Id,
                         Cards = newState.PlayerHands.First(ph => ph.PlayerId == newPlayerState.Id).Cards,
-                        ConnectionId = newPlayerState.ConnectionId
+                        ConnectionId = newPlayerState.ConnectionId,
+                        Username = newPlayerState.Username
                     }
                 });
             }
@@ -664,6 +667,7 @@ public class GameStateService : IGameStateService
                     {
                         ConnectionId = newPlayerState.ConnectionId,
                         Score = newPlayerState.Score,
+                        Username = newPlayerState.Username
                     }
                 });
             }

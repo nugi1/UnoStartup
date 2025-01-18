@@ -15,4 +15,6 @@ public class PlayerState
     public string Username { get; set; } = string.Empty;
 
     public Guid GameId { get; set; }
+    
+    public int Poisition { get; set; }
 }

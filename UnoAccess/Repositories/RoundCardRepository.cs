@@ -15,4 +15,17 @@ public class RoundCardRepository(UnoContext context) : GenericRepository<RoundCa
             DbSet.Remove(entity);
         }
     }
+    
+    public RoundCard? GetTrackedEntity(object roundId, object cardId)
+    {
+        return context.ChangeTracker.Entries<RoundCard?>()
+            .FirstOrDefault(e =>
+            {
+                var currentValueCardId = e.Property("CardId").CurrentValue;
+                var currentValueRoundId = e.Property("RoundId").CurrentValue;
+                return currentValueCardId != null && e.Entity != null &&
+                       currentValueCardId.Equals(cardId) && currentValueRoundId != null && currentValueRoundId.Equals(roundId);
+            })
+            ?.Entity;
+    }
 }
