@@ -8,64 +8,56 @@ using UnoServices.Interfaces;
 
 namespace UnoServices.Services;
 
-public class RoundService : IRoundService
+public class RoundService(IUnitOfWork unitOfWork) : IRoundService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    public RoundService(IUnitOfWork unitOfWork)
-    {
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task UpdateRoundTopCardAsync(Guid? roundId, Card topCard)
     {
         if (roundId == null)
         {
             throw new InvalidOperationException();
         }
-        var round = await _unitOfWork.Rounds.ReadByIdAsync(roundId) 
+        var round = await unitOfWork.Rounds.ReadByIdAsync(roundId) 
                     ?? throw new InvalidOperationException($"Round does not exist with Id: {roundId}");
-        var roundCard = await _unitOfWork.RoundCards.ReadOneAsync(
-            predicate: r => r.CardId == topCard.Id && r.RoundId == roundId);
         
         round.TopCardId = topCard.Id;
         round.TopCard = topCard;
         
-        await _unitOfWork.RoundCards.DeleteBy(round.Id, topCard.Id);
-        _unitOfWork.Rounds.Update(round);
+        await unitOfWork.RoundCards.DeleteBy(round.Id, topCard.Id);
+        unitOfWork.Rounds.Update(round);
         
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task FillTheCardsInPlayAsync(Guid roundId)
     {
-        var cards = await _unitOfWork.Cards.ReadAsync();
+        var cards = await unitOfWork.Cards.ReadAsync();
         var roundCards = ShuffleCards(cards, roundId);
 
         foreach (var card in roundCards)
         {
-            await _unitOfWork.RoundCards.CreateAsync(card);
+            await unitOfWork.RoundCards.CreateAsync(card);
         }
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task RemoveCardInRoundAsync(Guid roundId, Guid cardId)
     {
-        await _unitOfWork.RoundCards.DeleteBy(roundId, cardId);
+        await unitOfWork.RoundCards.DeleteBy(roundId, cardId);
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task CreateRound(Round round)
     {
-        await _unitOfWork.Rounds.CreateAsync(round);
+        await unitOfWork.Rounds.CreateAsync(round);
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task<Card> ShuffleUntilTopCardAsync(Guid roundId)
     {
-        var cards = await _unitOfWork.RoundCards.ReadAsync(
+        var cards = await unitOfWork.RoundCards.ReadAsync(
             predicate: rc => rc.RoundId == roundId,
             include: rc => rc.Include(r => r.Card));
         var sCards = cards.Select(c => c.Card).ToList();
@@ -73,46 +65,51 @@ public class RoundService : IRoundService
         
         foreach (var card in newRoundCards)
         {
-            _unitOfWork.RoundCards.Update(card);
+            var entity = unitOfWork.RoundCards.GetTrackedEntity(card.RoundId, card.CardId);
+            if (entity != null)
+            {
+                unitOfWork.RoundCards.DetachEntity(entity);
+            }
+            unitOfWork.RoundCards.Update(card);
         }
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
         
         return newRoundCards.OrderBy(n => n.Position).Select(n => n.Card).First();
     }
 
     public async Task DeleteCardsInPlayAsync(Guid roundId)
     {
-        var cardsInPlay = await _unitOfWork.RoundCards.ReadAsync(
+        var cardsInPlay = await unitOfWork.RoundCards.ReadAsync(
             predicate: rc => rc.RoundId == roundId);
 
         foreach (var cards in cardsInPlay)
         {
-            await _unitOfWork.RoundCards.DeleteBy(cards.RoundId, cards.CardId);
+            await unitOfWork.RoundCards.DeleteBy(cards.RoundId, cards.CardId);
         }
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task ReshuffleDiscardPilesAsync(Guid roundId, IEnumerable<Guid> playerCardIds)
     {
-        var cards = await _unitOfWork.Cards.ReadAsync();
+        var cards = await unitOfWork.Cards.ReadAsync();
         var roundCards = ShuffleCards(cards, roundId);
 
         foreach (var card in roundCards)
         {
             if (!playerCardIds.Contains(card.CardId))
             {
-                await _unitOfWork.RoundCards.CreateAsync(card);
+                await unitOfWork.RoundCards.CreateAsync(card);
             }
         }
 
-        await _unitOfWork.SaveAsync();    
+        await unitOfWork.SaveAsync();    
     }
 
     public async Task<IList<RoundCard>> GetCardsInRound(Guid roundId)
     {
-        var round = await _unitOfWork.RoundCards.ReadAsync(
+        var round = await unitOfWork.RoundCards.ReadAsync(
             predicate: rc => rc.RoundId == roundId,
             include: rc => rc.Include(c => c.Card),
             noTracking: true);
@@ -122,23 +119,23 @@ public class RoundService : IRoundService
 
     public async Task PlayedWildCardAsync(Guid roundId, PlayCardDto playedCard)
     {
-        var round = await _unitOfWork.Rounds.ReadByIdAsync(roundId);
-        round.WildColor = playedCard.CardColor;
+        var round = await unitOfWork.Rounds.ReadByIdAsync(roundId);
+        round!.WildColor = playedCard.CardColor;
 
-        _unitOfWork.Rounds.Update(round);
-        await _unitOfWork.SaveAsync();
+        unitOfWork.Rounds.Update(round);
+        await unitOfWork.SaveAsync();
     }
     public async Task<CardColor?> CheckForWildTopCardAsync(Guid roundId)
     {
-        var round = await _unitOfWork.Rounds.ReadByIdAsync(roundId);
-        return round.WildColor;
+        var round = await unitOfWork.Rounds.ReadByIdAsync(roundId);
+        return round!.WildColor;
     }
     public async Task RemoveTopCardWildColor(Guid roundId)
     {
-        var round = await _unitOfWork.Rounds.ReadByIdAsync(roundId);
-        round.WildColor = null;
-        _unitOfWork.Rounds.Update(round);
-        await _unitOfWork.SaveAsync();
+        var round = await unitOfWork.Rounds.ReadByIdAsync(roundId);
+        round!.WildColor = null;
+        unitOfWork.Rounds.Update(round);
+        await unitOfWork.SaveAsync();
     }
 
     private List<RoundCard> ShuffleCards(IList<Card> cards, Guid roundId)

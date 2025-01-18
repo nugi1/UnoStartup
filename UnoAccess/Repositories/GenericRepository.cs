@@ -2,19 +2,35 @@
 using Microsoft.EntityFrameworkCore.Query;
 using System.Linq.Expressions;
 using UnoAccess.Context;
-using UnoAccess.Entities;
 using UnoAccess.Interfaces;
 
 namespace UnoAccess.Repositories;
 
-public class GenericRepository<T> : IGenericRepository<T> 
+public class GenericRepository<T>(UnoContext context) : IGenericRepository<T>
     where T : class
 {
-    public DbSet<T> DbSet { get; set; }
+    protected DbSet<T> DbSet { get; } = context.Set<T>();
 
-    public GenericRepository(UnoContext context)
+    public T? GetTrackedEntity(object primaryKey)
     {
-        DbSet = context.Set<T>();
+        return context.ChangeTracker.Entries<T?>()
+            .FirstOrDefault(e =>
+            {
+                var currentValue = e.Property("Id").CurrentValue;
+                return currentValue != null && e.Entity != null &&
+                       currentValue.Equals(primaryKey);
+            })
+            ?.Entity;
+    }
+
+    public void DetachEntity(T entity)
+    {
+        var entry = context.Entry(entity);
+        
+        if (entry != null)
+        {
+            entry.State = EntityState.Detached;
+        }
     }
     public async Task<T> CreateAsync(T entity)
     {

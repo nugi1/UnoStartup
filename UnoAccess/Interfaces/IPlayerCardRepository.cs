@@ -8,9 +8,9 @@ public interface IPlayerCardRepository
 {
     Task<IList<Card>> GetPlayerCards(Guid playerId);
     Task AddPlayerCard(PlayerCard card);
-    Task RemovePlayerCard(Guid id1, Guid id2);
+    Task RemovePlayerCard(Guid cardId, Guid playerId);
 
-    Task<PlayerCard> ReadOneAsync(Expression<Func<PlayerCard, bool>>? predicate,
+    Task<PlayerCard?> ReadOneAsync(Expression<Func<PlayerCard, bool>>? predicate,
         Func<IQueryable<PlayerCard>, IIncludableQueryable<PlayerCard, object?>>? include = null,
         bool noTracking = true);
 }

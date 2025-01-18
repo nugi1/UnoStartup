@@ -6,5 +6,5 @@ public class Base
     {
         Id = Guid.NewGuid();
     }
-    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; set; }
 }

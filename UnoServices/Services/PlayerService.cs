@@ -4,27 +4,20 @@ using UnoServices.Interfaces;
 
 namespace UnoServices.Services;
 
-public class PlayerService : IPlayerService
+public class PlayerService(IUnitOfWork unitOfWork) : IPlayerService
 {
-    private readonly IUnitOfWork _unitOfWork;
-
-    public PlayerService(IUnitOfWork unitOfWork)
-    {
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task ChangePlayerTurnAsync(Player player)
     {
         player.IsTurn = false;
 
-        _unitOfWork.Players.Update(player);
+        unitOfWork.Players.Update(player);
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task<IEnumerable<Player>> GetPlayersBy(Guid gameId)
     {
-        var players = await _unitOfWork.Players.ReadAsync(
+        var players = await unitOfWork.Players.ReadAsync(
             predicate: p => p.GameId == gameId,
             noTracking: true);
 
@@ -33,24 +26,25 @@ public class PlayerService : IPlayerService
 
     public async Task<int> GetHighestPosition(Guid gameId)
     {
-        var position = (await _unitOfWork.Players.ReadAsync(
-            predicate: p => p.GameId == gameId)).OrderByDescending(p => p.Position).First().Position;
+        var position = (await unitOfWork.Players.ReadAsync(
+            predicate: p => p.GameId == gameId,
+            noTracking:true)).OrderByDescending(p => p.Position).First().Position;
 
         return position;
     }
 
     public async Task AddPlayerAsync(Player player)
     {
-        await _unitOfWork.Players.CreateAsync(player);
+        await unitOfWork.Players.CreateAsync(player);
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
-    public async Task<Player> GetTurn(Guid? gameId)
+    public async Task<Player> GetTurn(Guid gameId)
     {
-        var player = await _unitOfWork.Players.ReadOneAsync(
+        var player = await unitOfWork.Players.ReadOneAsync(
             predicate: p => p.GameId == gameId && p.IsTurn,
-            noTracking:true);
+            noTracking:true) ?? throw new InvalidOperationException("Something wrong!");
 
         return player;
     }
@@ -68,7 +62,7 @@ public class PlayerService : IPlayerService
         
         var calculatedPosition = (position % quantity + quantity) % quantity;
 
-        var player = await _unitOfWork.Players.ReadOneAsync(
+        var player = await unitOfWork.Players.ReadOneAsync(
             predicate: p => p.GameId == gameId && p.Position == calculatedPosition,
             noTracking:true);
 
@@ -77,33 +71,34 @@ public class PlayerService : IPlayerService
 
     public async Task ReversePositions(Guid? gameId)
     {
-        var players = await _unitOfWork.Players.ReadAsync(
-            predicate: p => p.GameId == gameId);
+        var players = await unitOfWork.Players.ReadAsync(
+            predicate: p => p.GameId == gameId,
+            noTracking:true);
 
         foreach (var player in players)
         {
             player.Position = players.Count - player.Position - 1;
 
-            _unitOfWork.Players.Update(player);
+            unitOfWork.Players.Update(player);
         }
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task UpdatePlayerScoreAsync(Player player, int score)
     {
-        player.Score = score;
+        player.Score += score;
 
-        _unitOfWork.Players.Update(player);
-        await _unitOfWork.SaveAsync();
+        unitOfWork.Players.Update(player);
+        await unitOfWork.SaveAsync();
     }
 
     public async Task SaidUnoAsync(Player player)
     {
         player.UnoSaid = true;
 
-        _unitOfWork.Players.Update(player);
-        await _unitOfWork.SaveAsync();
+        unitOfWork.Players.Update(player);
+        await unitOfWork.SaveAsync();
     }
 
     public async Task<Player?> SetTurn(bool direction, Guid gameId, int currentPosition, int steps, int quantity)
@@ -115,17 +110,22 @@ public class PlayerService : IPlayerService
         
         var calculatedPosition = ((currentPosition + steps) % quantity + quantity) % quantity;
         
-        var player = await _unitOfWork.Players.ReadOneAsync(
+        var player = await unitOfWork.Players.ReadOneAsync(
             predicate: p => p.Position == calculatedPosition % quantity && p.GameId == gameId && p.IsTurn == false,
             noTracking: true);
-
+        
         if (player != null)
         {
+            var trackedEntity = unitOfWork.Players.GetTrackedEntity(player.Id);
+            if (trackedEntity != null)
+            {
+                unitOfWork.Players.DetachEntity(trackedEntity);
+            }
             player.IsTurn = true;
-            _unitOfWork.Players.Update(player);
+            unitOfWork.Players.Update(player);
         }
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
 
         return player;
     }

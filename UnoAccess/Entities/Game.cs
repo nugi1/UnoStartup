@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace UnoAccess.Entities;
 
 public class Game : Base
@@ -15,8 +17,10 @@ public class Game : Base
 
     public int PlayerQuantity { get; set; }
 
+    [MaxLength(70)]
     public string? WinnerName { get; set; }
 
+    [MaxLength(70)]
     public string? Password { get; set; }
 
     public Guid? RoundId { get; set; }

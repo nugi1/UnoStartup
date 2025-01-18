@@ -3,8 +3,6 @@ using Shared.DTOs.Actions;
 using Shared.DTOs.ChangeStateData;
 using Shared.Enums;
 using Shared.States;
-using System;
-using System.Numerics;
 using System.Text.Json;
 using Shared.DTOs;
 using UnoAccess.Entities;
@@ -34,47 +32,47 @@ public class GameStateService : IGameStateService
 
         _actionDelegates = new List<DelegateAction>()
         {
-            new DelegateAction()
+            new()
             {
                 ActionName = "CreateGame",
                 Action = CreateGame
             },
-            new DelegateAction()
+            new()
             {
                 ActionName = "JoinGame",
                 Action = JoinGame
             },
-            new DelegateAction()
+            new()
             {
                 ActionName = "PlayCard",
                 Action = PlayCard
             },
-            new DelegateAction()
+            new()
             {
                 ActionName = "DrawCard",
                 Action = DrawCard
             },
-            new DelegateAction()
+            new()
             {
                 ActionName = "PlayWildDrawTwo",
                 Action = PlayedDrawTwo
             },
-            new DelegateAction()
+            new()
             {
                 ActionName = "PlayWildDrawFour",
                 Action = PlayedDrawFour
             },
-            new DelegateAction()
+            new()
             {
                 ActionName = "ChallengeWildDrawFour",
                 Action = ChallengeWildDrawFour
             },
-            new DelegateAction
+            new()
             {
                 ActionName = "UnoDeclaration",
                 Action = UnoDeclaration
             },
-            new DelegateAction
+            new()
             {
                 ActionName = "WinGame",
                 Action = WinGame
@@ -84,7 +82,7 @@ public class GameStateService : IGameStateService
 
     public async Task<GameState> UpdateGameState(PlayerAction action)
     {
-        var act = _actionDelegates.Where(ad => ad.ActionName == action.ActionType).FirstOrDefault();
+        var act = _actionDelegates.FirstOrDefault(ad => ad.ActionName == action.ActionType);
 
         if (act != null)
         {
@@ -96,7 +94,7 @@ public class GameStateService : IGameStateService
         throw new NotImplementedException();
     }
 
-    public async Task<GameState> GetGameState(Guid gameId)
+    public async Task<GameState?> GetGameState(Guid gameId)
     {
         var game = await _unitOfWork.Games.ReadOneAsync(
             predicate: e => e.Id == gameId,
@@ -108,7 +106,12 @@ public class GameStateService : IGameStateService
                             .Include(g => g.Round)
                             .Include(g => g.Players)
 
-        ) ?? throw new InvalidOperationException();
+        );
+
+        if (game == null)
+        {
+            return null;
+        }
 
         if (game.Round != null && game.Round.WildColor != null)
         {
@@ -147,22 +150,6 @@ public class GameStateService : IGameStateService
         return result;
     }
 
-    private async Task<Game> GetGame(Guid gameId)
-    {
-        var game = await _unitOfWork.Games.ReadOneAsync(
-                        predicate: e => e.Id == gameId,
-                        include: e => e.Include(g => g.Round)
-                                            .ThenInclude(r => r.TopCard)
-                                        .Include(g => g.Round)
-                                            .ThenInclude(r => r.CardsInPlay)
-                                        .Include(g => g.Players)
-                                        .Include(g => g.Round)
-                                        .Include(g => g.Players),
-                        noTracking: false) ?? throw new NotImplementedException();
-
-        return game;
-    }
-
     private T DeserializeContent<T>(object actionData)
     {
         if (actionData is JsonElement jsonElement)
@@ -185,6 +172,7 @@ public class GameStateService : IGameStateService
 
         var defaultGame = new Game()
         {
+            Id = action.GameId,
             PlayerQuantity = createGameDto.RequestedQuantity,
             Password = createGameDto.Password,
             Clockwise = true
@@ -336,24 +324,24 @@ public class GameStateService : IGameStateService
             
             await _playerCardService.RemovePlayerCardAsync(player.Id, playedCard);
             
-            bool direction = await _gameService.GetDirection(gameId ?? throw new InvalidOperationException());
+            bool direction = await _gameService.GetDirection(gameId);
 
             Player? nextPlayer;
             if (card.Value == CardValue.Skip)
             {
-                nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(), player.Position, 2, quantity);
+                nextPlayer = await _playerService.SetTurn(direction, gameId, player.Position, 2, quantity);
             }
             else if (card.Value == CardValue.Reverse)
             {
-                direction = await _gameService.ChangeDirection(gameId ?? throw new InvalidOperationException());
-                nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
+                direction = await _gameService.ChangeDirection(gameId);
+                nextPlayer = await _playerService.SetTurn(direction, gameId,
                     player.Position, 1, quantity);
             }
             else if (card.Value == CardValue.DrawTwo)
             {
                 var p = await _playerService.GetNextPlayer(direction, player.Position, gameId, quantity);
                 await _playerCardService.GivePlayerTwoCards(p.Id, round.Id);
-                nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
+                nextPlayer = await _playerService.SetTurn(direction, gameId,
                     player.Position, 2, quantity);
             }
             else if (card.Value == CardValue.WildDrawFour)
@@ -361,12 +349,12 @@ public class GameStateService : IGameStateService
                 var p = await _playerService.GetNextPlayer(direction, player.Position, gameId, quantity);
                 await _playerCardService.GivePlayerTwoCards(p.Id, round.Id);
                 await _playerCardService.GivePlayerTwoCards(p.Id, round.Id);
-                nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
+                nextPlayer = await _playerService.SetTurn(direction, gameId,
                     player.Position, 2, quantity);
             }
             else
             {
-                nextPlayer = await _playerService.SetTurn(direction, gameId ?? throw new InvalidOperationException(),
+                nextPlayer = await _playerService.SetTurn(direction, gameId,
                     player.Position, 1, quantity);
             }
 
@@ -407,20 +395,20 @@ public class GameStateService : IGameStateService
             throw;
         }
 
-        var gameState = await GetGameState(gameId ?? throw new NotImplementedException());
+        var gameState = await GetGameState(gameId);
 
         return gameState;
     }
 
-    private async Task DeclareWinner(Player player, Guid? gameId)
+    private async Task DeclareWinner(Player player, Guid gameId)
     {
         await _gameService.WinGameAsync(player, gameId);
     }
 
-    private async Task NewRoundStarted(Guid? gameId)
+    private async Task NewRoundStarted(Guid gameId)
     {
         var round = await _gameService.GetRound(gameId);
-        var players = (await _playerService.GetPlayersBy(gameId ?? throw new InvalidOperationException())).ToList();
+        var players = (await _playerService.GetPlayersBy(gameId)).ToList();
         await _gameService.NewRoundStartedAsync(round);
         await _playerCardService.DeletePlayerCardsAsync(players.Select(p => p.Id));
         await _roundService.DeleteCardsInPlayAsync(round.Id);
@@ -438,7 +426,7 @@ public class GameStateService : IGameStateService
         }
             
         await _roundService.UpdateRoundTopCardAsync(round.Id, topCard);
-        await _playerService.SetTurn(true, gameId ?? throw new InvalidOperationException(), -1, 1, players.Count);
+        await _playerService.SetTurn(true, gameId, -1, 1, players.Count);
     }
 
     private async Task<GameState> DrawCard(PlayerAction action)
@@ -452,7 +440,7 @@ public class GameStateService : IGameStateService
             
             if (player.Username != userName)
             {
-                return await GetGameState(action.GameId ?? throw new NotImplementedException());
+                return await GetGameState(action.GameId);
             }
         }
         
@@ -476,8 +464,8 @@ public class GameStateService : IGameStateService
             }))
         {
             await _playerService.ChangePlayerTurnAsync(player);
-            bool direction = await _gameService.GetDirection(action.GameId ?? throw new InvalidOperationException());
-            await _playerService.SetTurn(direction, action.GameId ?? throw new InvalidOperationException(), player.Position,
+            bool direction = await _gameService.GetDirection(action.GameId);
+            await _playerService.SetTurn(direction, action.GameId, player.Position,
                 1, quantity);
         }
         
@@ -491,7 +479,7 @@ public class GameStateService : IGameStateService
             await transaction.RollbackAsync();
         }
 
-        var gameState = await GetGameState(action.GameId ?? throw new NotImplementedException());
+        var gameState = await GetGameState(action.GameId);
 
         return gameState;
     }
@@ -527,7 +515,7 @@ public class GameStateService : IGameStateService
             await transaction.RollbackAsync();
         }
 
-        var gameState = await GetGameState(action.GameId ?? throw new NotImplementedException());
+        var gameState = await GetGameState(action.GameId);
 
         return gameState;
     }
@@ -563,7 +551,7 @@ public class GameStateService : IGameStateService
             await transaction.RollbackAsync();
         }
 
-        var gameState = await GetGameState(action.GameId ?? throw new NotImplementedException());
+        var gameState = await GetGameState(action.GameId);
 
         return gameState;
     }
@@ -580,7 +568,7 @@ public class GameStateService : IGameStateService
 
         await _playerService.SaidUnoAsync(player);
         
-        var gameState = await GetGameState(action.GameId ?? throw new NotImplementedException());
+        var gameState = await GetGameState(action.GameId);
 
         return gameState;
     }
@@ -605,7 +593,8 @@ public class GameStateService : IGameStateService
                     Players = newState.Game.Players.Select(p => new PlayerState
                     {
                         Username = p.Username,
-                        GameId = newState.Game.Id
+                        GameId = newState.Game.Id,
+                        Poisition = p.Position
                     }).ToList()
                 }
             });
@@ -626,6 +615,7 @@ public class GameStateService : IGameStateService
                     UnoSaid = p.UnoSaid,
                     Cards = newState.PlayerHands.FirstOrDefault(ph => ph.PlayerId == p.Id)?.Cards,
                     GameId = newState.Game.Id,
+                    Poisition = p.Position
                 }).ToList()
             });
         }
@@ -662,7 +652,8 @@ public class GameStateService : IGameStateService
                     {
                         GameId = newState.Game.Id,
                         Cards = newState.PlayerHands.First(ph => ph.PlayerId == newPlayerState.Id).Cards,
-                        ConnectionId = newPlayerState.ConnectionId
+                        ConnectionId = newPlayerState.ConnectionId,
+                        Username = newPlayerState.Username
                     }
                 });
             }
@@ -676,6 +667,7 @@ public class GameStateService : IGameStateService
                     {
                         ConnectionId = newPlayerState.ConnectionId,
                         Score = newPlayerState.Score,
+                        Username = newPlayerState.Username
                     }
                 });
             }

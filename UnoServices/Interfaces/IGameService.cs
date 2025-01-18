@@ -4,13 +4,13 @@ namespace UnoServices.Interfaces;
 
 public interface IGameService
 {
-    Task<int> GetPlayersQuantity(Guid? gameId);
+    Task<int> GetPlayersQuantity(Guid gameId);
 
     Task UpdateRoundId(Guid gameId, Guid roundId);
-    Task<Round> GetRound(Guid? gameId);
+    Task<Round> GetRound(Guid gameId);
     Task<bool> GetDirection(Guid gameId);
     Task<bool> ChangeDirection(Guid gameId);
     Task NewRoundStartedAsync(Round round);
-    Task WinGameAsync(Player player, Guid? gameId);
-    Task<int> GetRequestedQuantity(Guid? gameId);
+    Task WinGameAsync(Player player, Guid gameId);
+    Task<int> GetRequestedQuantity(Guid gameId);
 }

@@ -7,16 +7,15 @@ using UnoAccess.Interfaces;
 
 namespace UnoAccess.Repositories;
 
-public class PlayerCardRepository : IPlayerCardRepository
+public class PlayerCardRepository(UnoContext context) : IPlayerCardRepository
 {
-    public DbSet<PlayerCard> DbSet { get; set; }
+    private DbSet<PlayerCard> DbSet { get; } = context.Set<PlayerCard>();
 
-    public PlayerCardRepository(UnoContext context)
-    {
-        DbSet = context.Set<PlayerCard>();
-    }
-    
-    public async Task<IList<PlayerCard>> ReadAsync(Expression<Func<PlayerCard, bool>>? predicate = null, Func<IQueryable<PlayerCard>, IOrderedQueryable<PlayerCard>>? orderBy = null, Func<IQueryable<PlayerCard>, IIncludableQueryable<PlayerCard, object?>>? include = null, bool noTracking = true)
+    private async Task<IList<PlayerCard>> ReadAsync(
+        Expression<Func<PlayerCard, bool>>? predicate = null, 
+        Func<IQueryable<PlayerCard>, IOrderedQueryable<PlayerCard>>? orderBy = null, 
+        Func<IQueryable<PlayerCard>, IIncludableQueryable<PlayerCard, object?>>? include = null, 
+        bool noTracking = true)
     {
         IQueryable<PlayerCard> query = DbSet;
         query = noTracking ? query.AsNoTracking() : query;
@@ -26,7 +25,10 @@ public class PlayerCardRepository : IPlayerCardRepository
         return await(orderBy != null ? orderBy(query).ToListAsync() : query.ToListAsync());
     }
     
-    public async Task<PlayerCard> ReadOneAsync(Expression<Func<PlayerCard, bool>>? predicate, Func<IQueryable<PlayerCard>, IIncludableQueryable<PlayerCard, object?>>? include = null, bool noTracking = true)
+    public async Task<PlayerCard?> ReadOneAsync(
+        Expression<Func<PlayerCard, bool>>? predicate, 
+        Func<IQueryable<PlayerCard>, IIncludableQueryable<PlayerCard, object?>>? include = null, 
+        bool noTracking = true)
     {
         var query = await ReadAsync(
             predicate: predicate, 
@@ -40,7 +42,12 @@ public class PlayerCardRepository : IPlayerCardRepository
 
     public async Task<IList<Card>> GetPlayerCards(Guid playerId)
     {
-        var playerCards = await DbSet.Where(pc => pc.PlayerId == playerId).Include(pc => pc.Card).Select(pc => pc.Card).ToListAsync();
+        var playerCards = await DbSet
+            .AsNoTracking()
+            .Where(pc => pc.PlayerId == playerId)
+            .Include(pc => pc.Card)
+            .Select(pc => pc.Card)
+            .ToListAsync();
 
         return playerCards;
     }
@@ -50,9 +57,9 @@ public class PlayerCardRepository : IPlayerCardRepository
         await DbSet.AddAsync(card);
     }
 
-    public async Task RemovePlayerCard(Guid id1, Guid id2)
+    public async Task RemovePlayerCard(Guid cardId, Guid playerId)
     {
-        var entity = await DbSet.FindAsync(id1, id2);
+        var entity = await DbSet.FindAsync(cardId, playerId);
 
         if (entity != null)
         {

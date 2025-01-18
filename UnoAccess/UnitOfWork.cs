@@ -6,64 +6,38 @@ using System.Data;
 
 namespace UnoAccess;
 
-public class UnitOfWork : IUnitOfWork
+public class UnitOfWork(
+    UnoContext context,
+    ICardRepository cardRepository,
+    IRoundCardRepository cardRoundRepository,
+    IPlayerRepository playerRepository,
+    IGameRepository gameRepository,
+    IRoundRepository roundRepository,
+    IPlayerCardRepository playerCardRepository)
+    : IUnitOfWork
 {
-    private readonly UnoContext _context;
-
     private bool _disposed;
 
-    public UnitOfWork(
-        UnoContext context,
-        ICardRepository cardRepository,
-        IRoundCardRepository cardRoundRepository,
-        IPlayerRepository playerRepository,
-        IGameRepository gameRepository,
-        IRoundRepository roundRepository,
-        IPlayerCardRepository playerCardRepository)
-    {
-        _context = context;
-        Cards = cardRepository;
-        Rounds = roundRepository;
-        RoundCards = cardRoundRepository;
-        Games = gameRepository;
-        Players = playerRepository;
-        PlayerCards = playerCardRepository;
-    }
+    public ICardRepository Cards { get; } = cardRepository;
 
-    public ICardRepository Cards { get; private set; }
+    public IRoundRepository Rounds { get; } = roundRepository;
 
-    public IRoundRepository Rounds { get; private set; }
+    public IRoundCardRepository RoundCards { get; } = cardRoundRepository;
 
-    public IRoundCardRepository RoundCards { get; private set; }
+    public IPlayerRepository Players { get; } = playerRepository;
 
-    public IPlayerRepository Players { get; private set; }
+    public IGameRepository Games { get; } = gameRepository;
 
-    public IGameRepository Games { get; private set; }
-    
-    public IPlayerCardRepository PlayerCards { get; private set; }
+    public IPlayerCardRepository PlayerCards { get; } = playerCardRepository;
 
     public async Task<int> SaveAsync()
     {
-        return await _context.SaveChangesAsync();
-    }
-    
-    public void Detach<T>(T entity)
-    {
-        var entry = _context.Entry(entity);
-        if (entry != null)
-        {
-            entry.State = EntityState.Detached;
-        }
-    }
-
-    public Task<int> SaveAsync(bool logChanges)
-    {
-        return SaveAsync();
+        return await context.SaveChangesAsync();
     }
 
     public Task<IDbContextTransaction> BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
     {
-        return _context.Database.BeginTransactionAsync(isolationLevel);
+        return context.Database.BeginTransactionAsync(isolationLevel);
     }
 
     public void Dispose()
@@ -78,7 +52,7 @@ public class UnitOfWork : IUnitOfWork
         {
             if (disposing)
             {
-                _context.Dispose();
+                context.Dispose();
             }
         }
 

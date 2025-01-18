@@ -702,7 +702,8 @@ namespace UnoAccess.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Password")
-                        .HasColumnType("text");
+                        .HasMaxLength(70)
+                        .HasColumnType("character varying(70)");
 
                     b.Property<int>("PlayerQuantity")
                         .HasColumnType("integer");
@@ -714,7 +715,8 @@ namespace UnoAccess.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("WinnerName")
-                        .HasColumnType("text");
+                        .HasMaxLength(70)
+                        .HasColumnType("character varying(70)");
 
                     b.HasKey("Id");
 

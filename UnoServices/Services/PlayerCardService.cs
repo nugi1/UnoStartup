@@ -7,27 +7,24 @@ using UnoServices.Interfaces;
 
 namespace UnoServices.Services;
 
-public class PlayerCardService : IPlayerCardService
+public class PlayerCardService(IUnitOfWork unitOfWork) : IPlayerCardService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    public PlayerCardService(IUnitOfWork unitOfWork)
-    {
-        _unitOfWork = unitOfWork;
-    }
     public async Task RemovePlayerCardAsync(Guid playerId, PlayCardDto playedCard)
     {
-        var card = (await _unitOfWork.PlayerCards.GetPlayerCards(playerId)).First(
-            pc => (pc.Color == playedCard.CardColor && pc.Value == playedCard.CardValue) || (playedCard.CardValue == CardValue.Wild && pc.Value == CardValue.Wild) || (playedCard.CardValue == CardValue.WildDrawFour && pc.Value == CardValue.WildDrawFour));
+        var card = (await unitOfWork.PlayerCards.GetPlayerCards(playerId)).First(
+            pc => (pc.Color == playedCard.CardColor && pc.Value == playedCard.CardValue) || 
+                  (playedCard.CardValue == CardValue.Wild && pc.Value == CardValue.Wild) || 
+                  (playedCard.CardValue == CardValue.WildDrawFour && pc.Value == CardValue.WildDrawFour));
 
-        await _unitOfWork.PlayerCards.RemovePlayerCard(card.Id, playerId);
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.PlayerCards.RemovePlayerCard(card.Id, playerId);
+        await unitOfWork.SaveAsync();
     }
 
     public async Task AddPlayerCardsAsync(PlayerCard pCard)
     {
-        await _unitOfWork.PlayerCards.AddPlayerCard(pCard);
+        await unitOfWork.PlayerCards.AddPlayerCard(pCard);
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task GiveCardsToPlayers(IList<Player> players, IList<Guid> cardsInPlay, Guid roundId)
@@ -45,70 +42,73 @@ public class PlayerCardService : IPlayerCardService
                 CardId = card
             };
 
-            await _unitOfWork.PlayerCards.AddPlayerCard(pCard);
-            await _unitOfWork.RoundCards.DeleteBy(roundId, card);
+            await unitOfWork.PlayerCards.AddPlayerCard(pCard);
+            await unitOfWork.RoundCards.DeleteBy(roundId, card);
             cardsInPlay.RemoveAt(0);
         }
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task<bool> CardExistsForPlayer(Guid playerId, Guid cardId)
     {
-        var exists = await _unitOfWork.PlayerCards.ReadOneAsync(
-            predicate: p => p.PlayerId == playerId && p.CardId == cardId);
+        var exists = await unitOfWork.PlayerCards.ReadOneAsync(
+            predicate: p => p.PlayerId == playerId && p.CardId == cardId,
+            noTracking:true);
 
         return exists != null;
     }
 
     public async Task GiveCardToPlayer(Guid playerId, Guid cardId)
     {
-        await _unitOfWork.PlayerCards.AddPlayerCard(new PlayerCard()
+        await unitOfWork.PlayerCards.AddPlayerCard(new PlayerCard()
         {
             PlayerId = playerId,
             CardId = cardId
         });
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task GivePlayerTwoCards(Guid playerId, Guid roundId)
     {
-        var cardsInPlay = await _unitOfWork.RoundCards.ReadAsync(
-            predicate: c => c.RoundId == roundId);
+        var cardsInPlay = await unitOfWork.RoundCards.ReadAsync(
+            predicate: c => c.RoundId == roundId,
+            noTracking:true);
 
         var cardsToGive = cardsInPlay.OrderBy(cp => cp.Position).Take(2);
 
         foreach (var card in cardsToGive)
         {
-            await _unitOfWork.PlayerCards.AddPlayerCard(new PlayerCard()
+            await unitOfWork.PlayerCards.AddPlayerCard(new PlayerCard()
             {
                 CardId = card.CardId,
                 PlayerId = playerId
             });
 
-            await _unitOfWork.RoundCards.DeleteBy(roundId, card.CardId);
+            await unitOfWork.RoundCards.DeleteBy(roundId, card.CardId);
         }
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task<int> GetCardsQuantity(Guid playerId)
     {
-        var playerCards = await _unitOfWork.PlayerCards.GetPlayerCards(playerId);
+        var playerCards = await unitOfWork.PlayerCards.GetPlayerCards(playerId);
 
         return playerCards.Count;
     }
 
     public async Task<int> AccumulateScoresAsync(Guid? gameId, Guid playerId)
     {
-        var players = await _unitOfWork.Players.ReadAsync(
-            p => p.GameId == gameId && p.Id != playerId);
+        var players = await unitOfWork.Players.ReadAsync(
+            p => p.GameId == gameId && p.Id != playerId,
+            noTracking:true);
 
         int score = 0;
         foreach (var player in players)
         {
-            var playerCards = await _unitOfWork.PlayerCards.GetPlayerCards(player.Id);
+            var playerCards = await unitOfWork.PlayerCards.GetPlayerCards(player.Id);
             foreach (var c in playerCards)
             {
                 score += GetCardPoints(c.Value);
@@ -122,27 +122,27 @@ public class PlayerCardService : IPlayerCardService
     {
         foreach (var playerId in playerIds)
         {
-            var playerCards = await _unitOfWork.PlayerCards.GetPlayerCards(playerId);
+            var playerCards = await unitOfWork.PlayerCards.GetPlayerCards(playerId);
 
             foreach (var card in playerCards)
             {
-                await _unitOfWork.PlayerCards.RemovePlayerCard(card.Id, playerId);
+                await unitOfWork.PlayerCards.RemovePlayerCard(card.Id, playerId);
             }
         }
 
-        await _unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync();
     }
 
     public async Task<IEnumerable<Guid>> GetCardsInPlayAsync(Guid? actionGameId)
     {
-        var players = await _unitOfWork.Players.ReadAsync(
+        var players = await unitOfWork.Players.ReadAsync(
             predicate: p => p.GameId == actionGameId,
             noTracking:true);
 
         IEnumerable<Guid> result = new List<Guid>();
         foreach (var player in players)
         {
-            var playerCards = (await _unitOfWork.PlayerCards.GetPlayerCards(player.Id)).Select(p => p.Id);
+            var playerCards = (await unitOfWork.PlayerCards.GetPlayerCards(player.Id)).Select(p => p.Id);
 
             result = result.Union(playerCards);
         }
@@ -175,15 +175,15 @@ public class PlayerCardService : IPlayerCardService
 
     public async Task<Card> GetCardFromPlayersHand(Guid id, PlayCardDto playedCard)
     {
-        var pc = await _unitOfWork.PlayerCards.ReadOneAsync(
+        var pc = await unitOfWork.PlayerCards.ReadOneAsync(
             predicate: pc => pc.PlayerId == id && 
             (
             (pc.Card.Color == playedCard.CardColor && pc.Card.Value == playedCard.CardValue) || 
             (playedCard.CardValue == CardValue.Wild && pc.Card.Value == CardValue.Wild) || (playedCard.CardValue == CardValue.WildDrawFour && pc.Card.Value == CardValue.WildDrawFour)
             ),
             include: pc => pc.Include(c => c.Card),
-            noTracking: true);
-
+            noTracking: true) ?? throw new InvalidDataException("Player does not own card");
+        
         return pc.Card;
     }
 }
