@@ -103,7 +103,7 @@ public class PlayerService(IUnitOfWork unitOfWork) : IPlayerService
 
     public async Task SayUnoUntil(Player player)
     {
-        player.SayUnoUntil = DateTime.Now.AddSeconds(5);
+        player.SayUnoUntil = DateTime.Now.AddSeconds(5).ToUniversalTime();
         
         unitOfWork.Players.Update(player);
         await unitOfWork.SaveAsync();
