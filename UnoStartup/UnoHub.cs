@@ -29,7 +29,7 @@ namespace UnoStartup
 
             var changes = _gameStateService.GetGameStateChanges(oldState, newState);
 
-            await BroadCastChanges(changes, newState.GameId ?? throw new NotImplementedException());
+            await BroadCastChanges(changes, newState.GameId ?? throw new NotImplementedException(), action);
 
             return new GameStateDto()
             {
@@ -48,7 +48,7 @@ namespace UnoStartup
             };
         }
 
-        public async Task BroadCastChanges(IEnumerable<GameStateChange> changes, Guid gameId)
+        public async Task BroadCastChanges(IEnumerable<GameStateChange> changes, Guid gameId, PlayerAction action)
         {
             foreach (var change in changes)
             {
@@ -88,8 +88,23 @@ namespace UnoStartup
                         break;
                     case "PlayerCardsChanged":
                         var cards = change.Data as GamePlayerCards;
+                        if (action.ActionType == "ChallengeUnoDeclaration")
+                        {
+                            await Clients.Client(cards.ConnectionId).SendAsync("ReceivedPenalty");
+                        }
+                        
                         await Clients.Client(cards.ConnectionId).SendAsync("NewPlayerCards", cards.Cards);
                         await Clients.Group(gameId.ToString()).SendAsync("PlayerCards", cards.Username, cards.Cards.Count);
+                        if (cards.Cards.Count == 1)
+                        {
+                            foreach (var con in cards.ConnectionIds)
+                            {
+                                if (con != cards.ConnectionId)
+                                {
+                                    await Clients.Client(con).SendAsync("CanChallenge");
+                                }
+                            }
+                        }
                         break;
                     case "PlayerScoreChanged":
                         var playerScore = change.Data as GameScoreDto;

@@ -9,4 +9,6 @@ public class GamePlayerCards
     public IList<CardDto> Cards { get; set; } = new List<CardDto>();
 
     public string Username { get; set; } = string.Empty;
+
+    public List<string> ConnectionIds { get; set; } = new List<string>();
 }

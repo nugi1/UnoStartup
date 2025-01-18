@@ -186,4 +186,11 @@ public class PlayerCardService(IUnitOfWork unitOfWork) : IPlayerCardService
         
         return pc.Card;
     }
+
+    public async Task<IEnumerable<Card>> GetPlayerCards(Guid playerId)
+    {
+        var cards = await unitOfWork.PlayerCards.GetPlayerCards(playerId);
+
+        return cards;
+    }
 }

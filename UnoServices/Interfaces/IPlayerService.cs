@@ -18,4 +18,5 @@ public interface IPlayerService
     Task ReversePositions(Guid? gameId);
     Task UpdatePlayerScoreAsync(Player player, int score);
     Task SaidUnoAsync(Player player);
+    Task SayUnoUntil(Player player);
 }
