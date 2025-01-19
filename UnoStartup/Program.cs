@@ -12,7 +12,10 @@ public class Program
 
         builder.Services.AddControllers();
         builder.Services.AddOpenApi();
-        
+        UnoAccess.Configuration.DataAccessConfiguration.AddAccessConfig(builder.Services, builder.Configuration);
+        UnoServices.Configuration.DataServicesConfiguration.AddServicesConfig(builder.Services, builder.Configuration);
+        builder.Services.AddSignalR();
+
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAllOrigins", builder =>
@@ -21,11 +24,6 @@ public class Program
                     .AllowAnyHeader()
                     .AllowCredentials());
         });
-
-        UnoAccess.Configuration.DataAccessConfiguration.AddAccessConfig(builder.Services, builder.Configuration);
-        UnoServices.Configuration.DataServicesConfiguration.AddServicesConfig(builder.Services, builder.Configuration);
-        builder.Services.AddSignalR();
-
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowSpecificOrigins", policy =>
