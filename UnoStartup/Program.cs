@@ -15,20 +15,12 @@ public class Program
         UnoAccess.Configuration.DataAccessConfiguration.AddAccessConfig(builder.Services, builder.Configuration);
         UnoServices.Configuration.DataServicesConfiguration.AddServicesConfig(builder.Services, builder.Configuration);
         builder.Services.AddSignalR();
-
-        builder.Services.AddCors(options =>
-        {
-            options.AddPolicy("AllowAllOrigins", builder =>
-                builder.WithOrigins("http://5.178.149.163:3000/")
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .AllowCredentials());
-        });
+        
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowSpecificOrigins", policy =>
             {
-                policy.WithOrigins("http://localhost:3000")
+                policy.WithOrigins("http://localhost:3000", "http://5.178.149.163:3000/")
                       .AllowAnyMethod()
                       .AllowAnyHeader()
                       .AllowCredentials();
@@ -49,7 +41,6 @@ public class Program
             dbContext.Database.Migrate();
         }
 
-        app.UseCors("AllowAllOrigins");
         app.UseCors("AllowSpecificOrigins");
 
         app.MapHub<UnoHub>("/uno/hub");
