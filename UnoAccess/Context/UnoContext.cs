@@ -72,6 +72,6 @@ public class UnoContext : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.UseNpgsql(
-            "Host=myunoserver.postgres.database.azure.com;Port=5432;Username=nugipg;Password=Road2Globlob123!;Database=unoserve-database;SslMode=Require;");
+            "Host=postgres;Database=GameDatabase;Username=postgres;Password=Road2Globlob123;TrustServerCertificate=True");
     }
 }
