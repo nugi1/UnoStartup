@@ -12,8 +12,8 @@ using UnoAccess.Context;
 namespace UnoAccess.Migrations
 {
     [DbContext(typeof(UnoContext))]
-    [Migration("20250112182048_AgainChange")]
-    partial class AgainChange
+    [Migration("20250119204457_kas")]
+    partial class kas
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -698,11 +698,15 @@ namespace UnoAccess.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("Clockwise")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("EndTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Password")
-                        .HasColumnType("text");
+                        .HasMaxLength(70)
+                        .HasColumnType("character varying(70)");
 
                     b.Property<int>("PlayerQuantity")
                         .HasColumnType("integer");
@@ -714,7 +718,8 @@ namespace UnoAccess.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("WinnerName")
-                        .HasColumnType("text");
+                        .HasMaxLength(70)
+                        .HasColumnType("character varying(70)");
 
                     b.HasKey("Id");
 
@@ -800,6 +805,9 @@ namespace UnoAccess.Migrations
 
                     b.Property<Guid?>("TopCardId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("WildColor")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
