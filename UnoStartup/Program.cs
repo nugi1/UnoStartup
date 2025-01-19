@@ -50,6 +50,7 @@ public class Program
         }
 
         app.UseCors("AllowAllOrigins");
+        app.UseCors("AllowSpecificOrigins");
 
         app.MapHub<UnoHub>("/uno/hub");
 
