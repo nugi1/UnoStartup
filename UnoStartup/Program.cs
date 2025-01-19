@@ -12,6 +12,15 @@ public class Program
 
         builder.Services.AddControllers();
         builder.Services.AddOpenApi();
+        
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowAllOrigins", builder =>
+                builder.AllowAnyOrigin()
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials());
+        });
 
         UnoAccess.Configuration.DataAccessConfiguration.AddAccessConfig(builder.Services, builder.Configuration);
         UnoServices.Configuration.DataServicesConfiguration.AddServicesConfig(builder.Services, builder.Configuration);
@@ -42,7 +51,7 @@ public class Program
             dbContext.Database.Migrate();
         }
 
-        app.UseCors("AllowSpecificOrigins");
+        app.UseCors("AllowAllOrigins");
 
         app.MapHub<UnoHub>("/uno/hub");
 
