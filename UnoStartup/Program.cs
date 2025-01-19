@@ -16,7 +16,7 @@ public class Program
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAllOrigins", builder =>
-                builder.AllowAnyOrigin()
+                builder.WithOrigins("http://5.178.149.163:3000/")
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials());
