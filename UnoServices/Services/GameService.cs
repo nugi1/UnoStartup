@@ -38,7 +38,7 @@ public class GameService(IUnitOfWork unitOfWork) : IGameService
     {
         var game = await unitOfWork.Games.ReadOneAsync(
             predicate: g => g.Id == gameId,
-            include: g => g.Include(e => e.Round).ThenInclude(r => r!.TopCard),
+            include: g => g.Include(e => e.Round).ThenInclude(r => r.TopCard),
             noTracking:true) ?? throw new InvalidDataException("Game not found!");
 
         return game.Round ?? throw new InvalidDataException("Game is not started yet!");
