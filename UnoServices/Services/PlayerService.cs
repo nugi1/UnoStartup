@@ -8,8 +8,13 @@ public class PlayerService(IUnitOfWork unitOfWork) : IPlayerService
 {
     public async Task ChangePlayerTurnAsync(Player player)
     {
-        player.IsTurn = false;
+        var trackedEntity = unitOfWork.Players.GetTrackedEntity(player.Id);
 
+        if (trackedEntity != null)
+        {
+            unitOfWork.Players.DetachEntity(trackedEntity);
+        }
+        player.IsTurn = false;
         unitOfWork.Players.Update(player);
 
         await unitOfWork.SaveAsync();
@@ -106,6 +111,26 @@ public class PlayerService(IUnitOfWork unitOfWork) : IPlayerService
         player.SayUnoUntil = DateTime.Now.AddSeconds(5).ToUniversalTime();
         
         unitOfWork.Players.Update(player);
+        await unitOfWork.SaveAsync();
+    }
+
+    public async Task RemoveUnoSaidAsync(Guid gameId)
+    {
+        var players = await unitOfWork.Players.ReadAsync(
+            predicate: p => p.GameId == gameId,
+            noTracking: true);
+
+        foreach (var player in players)
+        {
+            var trackedEntity = unitOfWork.Players.GetTrackedEntity(player.Id);
+            if (trackedEntity != null)
+            {
+                unitOfWork.Players.DetachEntity(trackedEntity);
+            }
+            
+            unitOfWork.Players.Update(player);
+        }
+
         await unitOfWork.SaveAsync();
     }
 

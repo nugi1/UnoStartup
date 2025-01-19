@@ -420,7 +420,7 @@ public class GameStateService : IGameStateService
         {
             var quantity = await _playerCardService.GetCardsQuantity(player.Id);
 
-            if (quantity == 1 && player.SayUnoUntil > DateTime.Now && !player.UnoSaid)
+            if (quantity == 1 && player.SayUnoUntil < DateTime.Now && !player.UnoSaid)
             {
                 await _playerCardService.GivePlayerTwoCards(player.Id, round.Id);
             }
@@ -455,6 +455,11 @@ public class GameStateService : IGameStateService
         {
             topCard = await _roundService.ShuffleUntilTopCardAsync(round.Id);
         }
+
+        var nowTurn = await _playerService.GetTurn(gameId);
+        await _playerService.ChangePlayerTurnAsync(nowTurn);
+
+        await _playerService.RemoveUnoSaidAsync(gameId);
             
         await _roundService.UpdateRoundTopCardAsync(round.Id, topCard);
         await _playerService.SetTurn(true, gameId, -1, 1, players.Count);
@@ -687,7 +692,15 @@ public class GameStateService : IGameStateService
         {
             var player = oldState.Game.Players.FirstOrDefault(p => p.Id == newPlayerState.Id);
 
-            var oldHand = oldState.PlayerHands.FirstOrDefault(ph => ph.PlayerId == player.Id);
+            PlayerHand? oldHand = null;
+            if (player != null)
+            {
+                oldHand = oldState.PlayerHands.FirstOrDefault(ph => ph.PlayerId == player.Id);
+            }
+            else
+            {
+                oldHand = null;
+            }
             var hand = newState.PlayerHands.FirstOrDefault(ph => ph.PlayerId == newPlayerState.Id);
             if ((oldHand == null && hand != null) || (hand != null && oldHand != null && !hand.Cards.Equals(oldHand.Cards)))
             {

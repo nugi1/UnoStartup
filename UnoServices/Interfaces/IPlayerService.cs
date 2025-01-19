@@ -19,4 +19,5 @@ public interface IPlayerService
     Task UpdatePlayerScoreAsync(Player player, int score);
     Task SaidUnoAsync(Player player);
     Task SayUnoUntil(Player player);
+    Task RemoveUnoSaidAsync(Guid gameId);
 }
