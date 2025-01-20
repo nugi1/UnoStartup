@@ -20,7 +20,7 @@ public class Program
         {
             options.AddPolicy("AllowSpecificOrigins", policy =>
             {
-                policy.WithOrigins("http://localhost:3000", "http://5.178.149.163:3000/", "http://unostartup-client-1:3000")
+                policy.WithOrigins("http://localhost:3000", "http://client:3000", "http://4.180.9.160:3000/uno/hub")
                       .AllowAnyMethod()
                       .AllowAnyHeader()
                       .AllowCredentials();
