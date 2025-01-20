@@ -18,16 +18,6 @@ public class Program
         
         builder.Services.AddCors(options =>
         {
-            options.AddPolicy("Allow", policy =>
-            {
-                policy.AllowAnyOrigin()
-                    .AllowAnyHeader()
-                    .AllowAnyHeader();
-            });
-        });
-        
-        builder.Services.AddCors(options =>
-        {
             options.AddPolicy("AllowSpecificOrigins", policy =>
             {
                 policy.WithOrigins("http://localhost:3000", "http://client:3000", "http://4.180.9.160:3000")
@@ -51,7 +41,6 @@ public class Program
             dbContext.Database.Migrate();
         }
 
-        app.UseCors("Allow");
         app.UseCors("AllowSpecificOrigins");
 
         app.MapHub<UnoHub>("/uno/hub");
