@@ -18,6 +18,17 @@ public class Program
         
         builder.Services.AddCors(options =>
         {
+            options.AddPolicy("Allow", policy =>
+            {
+                policy.AllowAnyOrigin()
+                    .AllowAnyHeader()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
+            });
+        });
+        
+        builder.Services.AddCors(options =>
+        {
             options.AddPolicy("AllowSpecificOrigins", policy =>
             {
                 policy.WithOrigins("http://localhost:3000", "http://client:3000", "http://4.180.9.160:3000")
