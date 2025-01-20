@@ -26,6 +26,17 @@ services:
     networks:
       - unoapp-network  # Network for inter-container communication
 
+  client:
+   build:
+     context: ./uno-frontend  # Point to the uno-frontend directory for the Next.js Dockerfile
+     dockerfile: Dockerfile
+   ports:
+     - "3000:3000"
+   depends_on:
+     - unostartup  # Ensure backend is available before front-end
+   networks:
+     - unoapp-network
+
 
 networks:
   unoapp-network:
