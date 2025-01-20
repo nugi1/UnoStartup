@@ -51,6 +51,7 @@ public class Program
             dbContext.Database.Migrate();
         }
 
+        app.UseCors("Allow");
         app.UseCors("AllowSpecificOrigins");
 
         app.MapHub<UnoHub>("/uno/hub");
