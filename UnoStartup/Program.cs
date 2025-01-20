@@ -22,8 +22,7 @@ public class Program
             {
                 policy.AllowAnyOrigin()
                     .AllowAnyHeader()
-                    .AllowAnyHeader()
-                    .AllowCredentials();
+                    .AllowAnyHeader();
             });
         });
         
