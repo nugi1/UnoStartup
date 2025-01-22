@@ -12,9 +12,6 @@ COPY . .
 # Publish the app to the /out directory
 RUN dotnet publish "UnoStartup/UnoStartup.csproj" -c Release -o /out
 
-COPY wait-for-it.sh /app/wait-for-it.sh
-
-RUN chmod +x /app/wait-for-it.sh
 
 # Generate runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
